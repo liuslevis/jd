@@ -42,7 +42,7 @@ def convert_age(age_str):
 def get_basic_user_feat():
     dump_path = './cache/basic_user.pkl'
     if os.path.exists(dump_path):
-        user = pickle.load(open(dump_path))
+        user = pickle.load(open(dump_path, 'rb'))
     else:
         user = pd.read_csv(user_path, encoding='gbk')
         user['age'] = user['age'].map(convert_age)
@@ -50,21 +50,21 @@ def get_basic_user_feat():
         sex_df = pd.get_dummies(user["sex"], prefix="sex")
         user_lv_df = pd.get_dummies(user["user_lv_cd"], prefix="user_lv_cd")
         user = pd.concat([user['user_id'], age_df, sex_df, user_lv_df], axis=1)
-        pickle.dump(user, open(dump_path, 'w'))
+        pickle.dump(user, open(dump_path, 'wb'))
     return user
 
 
 def get_basic_product_feat():
     dump_path = './cache/basic_product.pkl'
     if os.path.exists(dump_path):
-        product = pickle.load(open(dump_path))
+        product = pickle.load(open(dump_path, 'rb'))
     else:
         product = pd.read_csv(product_path)
         attr1_df = pd.get_dummies(product["a1"], prefix="a1")
         attr2_df = pd.get_dummies(product["a2"], prefix="a2")
         attr3_df = pd.get_dummies(product["a3"], prefix="a3")
         product = pd.concat([product[['sku_id', 'cate', 'brand']], attr1_df, attr2_df, attr3_df], axis=1)
-        pickle.dump(product, open(dump_path, 'w'))
+        pickle.dump(product, open(dump_path, 'wb'))
     return product
 
 
@@ -90,36 +90,36 @@ def get_actions(start_date, end_date):
     """
     dump_path = './cache/all_action_%s_%s.pkl' % (start_date, end_date)
     if os.path.exists(dump_path):
-        actions = pickle.load(open(dump_path))
+        actions = pickle.load(open(dump_path, 'rb'))
     else:
         action_1 = get_actions_1()
         action_2 = get_actions_2()
         action_3 = get_actions_3()
         actions = pd.concat([action_1, action_2, action_3]) # type: pd.DataFrame
         actions = actions[(actions.time >= start_date) & (actions.time < end_date)]
-        pickle.dump(actions, open(dump_path, 'w'))
+        pickle.dump(actions, open(dump_path, 'wb'))
     return actions
 
 
 def get_action_feat(start_date, end_date):
     dump_path = './cache/action_accumulate_%s_%s.pkl' % (start_date, end_date)
     if os.path.exists(dump_path):
-        actions = pickle.load(open(dump_path))
+        actions = pickle.load(open(dump_path, 'rb'))
     else:
         actions = get_actions(start_date, end_date)
         actions = actions[['user_id', 'sku_id', 'type']]
         df = pd.get_dummies(actions['type'], prefix='%s-%s-action' % (start_date, end_date))
         actions = pd.concat([actions, df], axis=1)  # type: pd.DataFrame
         actions = actions.groupby(['user_id', 'sku_id'], as_index=False).sum()
-        del actions['type']
-        pickle.dump(actions, open(dump_path, 'w'))
+        del(actions['type'])
+        pickle.dump(actions, open(dump_path, 'wb'))
     return actions
 
 
 def get_accumulate_action_feat(start_date, end_date):
     dump_path = './cache/action_accumulate_%s_%s.pkl' % (start_date, end_date)
     if os.path.exists(dump_path):
-        actions = pickle.load(open(dump_path))
+        actions = pickle.load(open(dump_path, 'rb'))
     else:
         actions = get_actions(start_date, end_date)
         df = pd.get_dummies(actions['type'], prefix='action')
@@ -128,27 +128,27 @@ def get_accumulate_action_feat(start_date, end_date):
         actions['weights'] = actions['time'].map(lambda x: datetime.strptime(end_date, '%Y-%m-%d') - datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
         #actions['weights'] = time.strptime(end_date, '%Y-%m-%d') - actions['datetime']
         actions['weights'] = actions['weights'].map(lambda x: math.exp(-x.days))
-        print actions.head(10)
+        print(actions.head(10))
         actions['action_1'] = actions['action_1'] * actions['weights']
         actions['action_2'] = actions['action_2'] * actions['weights']
         actions['action_3'] = actions['action_3'] * actions['weights']
         actions['action_4'] = actions['action_4'] * actions['weights']
         actions['action_5'] = actions['action_5'] * actions['weights']
         actions['action_6'] = actions['action_6'] * actions['weights']
-        del actions['model_id']
-        del actions['type']
-        del actions['time']
-        del actions['datetime']
-        del actions['weights']
+        del(actions['model_id'])
+        del(actions['type'])
+        del(actions['time'])
+        del(actions['datetime'])
+        del(actions['weights'])
         actions = actions.groupby(['user_id', 'sku_id', 'cate', 'brand'], as_index=False).sum()
-        pickle.dump(actions, open(dump_path, 'w'))
+        pickle.dump(actions, open(dump_path, 'wb'))
     return actions
 
 
 def get_comments_product_feat(start_date, end_date):
     dump_path = './cache/comments_accumulate_%s_%s.pkl' % (start_date, end_date)
     if os.path.exists(dump_path):
-        comments = pickle.load(open(dump_path))
+        comments = pickle.load(open(dump_path, 'rb'))
     else:
         comments = pd.read_csv(comment_path)
         comment_date_end = end_date
@@ -160,10 +160,10 @@ def get_comments_product_feat(start_date, end_date):
         comments = comments[(comments.dt >= comment_date_begin) & (comments.dt < comment_date_end)]
         df = pd.get_dummies(comments['comment_num'], prefix='comment_num')
         comments = pd.concat([comments, df], axis=1) # type: pd.DataFrame
-        #del comments['dt']
-        #del comments['comment_num']
+        #del(comments['dt'])
+        #del(comments['comment_num'])
         comments = comments[['sku_id', 'has_bad_comment', 'bad_comment_rate', 'comment_num_1', 'comment_num_2', 'comment_num_3', 'comment_num_4']]
-        pickle.dump(comments, open(dump_path, 'w'))
+        pickle.dump(comments, open(dump_path, 'wb'))
     return comments
 
 
@@ -172,7 +172,7 @@ def get_accumulate_user_feat(start_date, end_date):
                'user_action_5_ratio', 'user_action_6_ratio']
     dump_path = './cache/user_feat_accumulate_%s_%s.pkl' % (start_date, end_date)
     if os.path.exists(dump_path):
-        actions = pickle.load(open(dump_path))
+        actions = pickle.load(open(dump_path, 'rb'))
     else:
         actions = get_actions(start_date, end_date)
         df = pd.get_dummies(actions['type'], prefix='action')
@@ -184,7 +184,7 @@ def get_accumulate_user_feat(start_date, end_date):
         actions['user_action_5_ratio'] = actions['action_4'] / actions['action_5']
         actions['user_action_6_ratio'] = actions['action_4'] / actions['action_6']
         actions = actions[feature]
-        pickle.dump(actions, open(dump_path, 'w'))
+        pickle.dump(actions, open(dump_path, 'wb'))
     return actions
 
 
@@ -193,7 +193,7 @@ def get_accumulate_product_feat(start_date, end_date):
                'product_action_5_ratio', 'product_action_6_ratio']
     dump_path = './cache/product_feat_accumulate_%s_%s.pkl' % (start_date, end_date)
     if os.path.exists(dump_path):
-        actions = pickle.load(open(dump_path))
+        actions = pickle.load(open(dump_path, 'rb'))
     else:
         actions = get_actions(start_date, end_date)
         df = pd.get_dummies(actions['type'], prefix='action')
@@ -205,28 +205,28 @@ def get_accumulate_product_feat(start_date, end_date):
         actions['product_action_5_ratio'] = actions['action_4'] / actions['action_5']
         actions['product_action_6_ratio'] = actions['action_4'] / actions['action_6']
         actions = actions[feature]
-        pickle.dump(actions, open(dump_path, 'w'))
+        pickle.dump(actions, open(dump_path, 'wb'))
     return actions
 
 
 def get_labels(start_date, end_date):
     dump_path = './cache/labels_%s_%s.pkl' % (start_date, end_date)
     if os.path.exists(dump_path):
-        actions = pickle.load(open(dump_path))
+        actions = pickle.load(open(dump_path, 'rb'))
     else:
         actions = get_actions(start_date, end_date)
         actions = actions[actions['type'] == 4]
         actions = actions.groupby(['user_id', 'sku_id'], as_index=False).sum()
         actions['label'] = 1
         actions = actions[['user_id', 'sku_id', 'label']]
-        pickle.dump(actions, open(dump_path, 'w'))
+        pickle.dump(actions, open(dump_path, 'wb'))
     return actions
 
 
 def make_test_set(train_start_date, train_end_date):
     dump_path = './cache/test_set_%s_%s.pkl' % (train_start_date, train_end_date)
     if os.path.exists(dump_path):
-        actions = pickle.load(open(dump_path))
+        actions = pickle.load(open(dump_path, 'rb'))
     else:
         start_days = "2016-02-01"
         user = get_basic_user_feat()
@@ -258,14 +258,14 @@ def make_test_set(train_start_date, train_end_date):
         actions = actions[actions['cate'] == 8]
 
     users = actions[['user_id', 'sku_id']].copy()
-    del actions['user_id']
-    del actions['sku_id']
+    del(actions['user_id'])
+    del(actions['sku_id'])
     return users, actions
 
 def make_train_set(train_start_date, train_end_date, test_start_date, test_end_date, days=30):
     dump_path = './cache/train_set_%s_%s_%s_%s.pkl' % (train_start_date, train_end_date, test_start_date, test_end_date)
     if os.path.exists(dump_path):
-        actions = pickle.load(open(dump_path))
+        actions = pickle.load(open(dump_path, 'rb'))
     else:
         start_days = "2016-02-01"
         user = get_basic_user_feat()
@@ -297,9 +297,9 @@ def make_train_set(train_start_date, train_end_date, test_start_date, test_end_d
 
     users = actions[['user_id', 'sku_id']].copy()
     labels = actions['label'].copy()
-    del actions['user_id']
-    del actions['sku_id']
-    del actions['label']
+    del(actions['user_id'])
+    del(actions['sku_id'])
+    del(actions['label'])
 
     return users, actions, labels
 
@@ -329,8 +329,8 @@ def report(pred, label):
             neg += 1
     all_user_acc = 1.0 * pos / ( pos + neg)
     all_user_recall = 1.0 * pos / len(all_user_set)
-    print '所有用户中预测购买用户的准确率为 ' + str(all_user_acc)
-    print '所有用户中预测购买用户的召回率' + str(all_user_recall)
+    print('所有用户中预测购买用户的准确率为 ' + str(all_user_acc))
+    print('所有用户中预测购买用户的召回率' + str(all_user_recall))
 
     pos, neg = 0, 0
     for user_item_pair in all_user_test_item_pair:
@@ -340,14 +340,14 @@ def report(pred, label):
             neg += 1
     all_item_acc = 1.0 * pos / ( pos + neg)
     all_item_recall = 1.0 * pos / len(all_user_item_pair)
-    print '所有用户中预测购买商品的准确率为 ' + str(all_item_acc)
-    print '所有用户中预测购买商品的召回率' + str(all_item_recall)
+    print('所有用户中预测购买商品的准确率为 ' + str(all_item_acc))
+    print('所有用户中预测购买商品的召回率' + str(all_item_recall))
     F11 = 6.0 * all_user_recall * all_user_acc / (5.0 * all_user_recall + all_user_acc)
     F12 = 5.0 * all_item_acc * all_item_recall / (2.0 * all_item_recall + 3 * all_item_acc)
     score = 0.4 * F11 + 0.6 * F12
-    print 'F11=' + str(F11)
-    print 'F12=' + str(F12)
-    print 'score=' + str(score)
+    print('F11=' + str(F11))
+    print('F12=' + str(F12))
+    print('score=' + str(score))
 
 if __name__ == '__main__':
     train_start_date = '2016-02-01'
@@ -355,8 +355,8 @@ if __name__ == '__main__':
     test_start_date = '2016-03-01'
     test_end_date = '2016-03-05'
     user, action, label = make_train_set(train_start_date, train_end_date, test_start_date, test_end_date)
-    print user.head(10)
-    print action.head(10)
+    print(user.head(10))
+    print(action.head(10))
 
 
 
