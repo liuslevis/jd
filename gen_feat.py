@@ -81,17 +81,17 @@ def get_actions(start_date, end_date):
 
 # user_id sku_id action_1:6 用户对物品的历史行为累计和
 def get_action_feat(start_date, end_date):
-    feature = ['user_id', 'sku_id', 'type', 'action_1', 'action_2', 'action_3', 'action_4', 'action_5', 'action_6']
     dump_path = './cache/action_accumulate_%s_%s.pkl' % (start_date, end_date)
     if os.path.exists(dump_path):
         actions = pickle.load(open(dump_path, 'rb'))
     else:
         actions = get_actions(start_date, end_date)
         actions = actions[['user_id', 'sku_id', 'type']]
-        df = pd.get_dummies(actions['type'], prefix='action' % (start_date, end_date))
+        df = pd.get_dummies(actions['type'], prefix='%s_%s_action' % (start_date, end_date))
         actions = pd.concat([actions, df], axis=1)  # expand col
         actions = actions.groupby(['user_id', 'sku_id'], as_index=False).sum()
-        pickle.dump(actions[feature], open(dump_path, 'wb'))
+        del(actions['type'])
+        pickle.dump(actions, open(dump_path, 'wb'))
     return actions
 
 # user_id sku_id act_1:6 用户对物品的历史行为累计和带上时间惩罚
