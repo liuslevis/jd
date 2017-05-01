@@ -1,7 +1,7 @@
-user <- read.csv('data/JData_User.csv', colClasses=c('numeric', 'factor', 'factor', 'factor', 'factor'))
-product <- read.csv('data/JData_Product.csv', colClasses=c('numeric', 'factor', 'factor', 'factor', 'factor', 'factor'))
-comment <- read.csv('data/JData_Comment.csv', colClasses=c('factor', 'numeric', 'factor', 'factor', 'numeric'))
-action <- read.csv('data/JData_Action_201602.csv', colClasses=c('numeric', 'numeric', 'character', 'factor', 'factor', 'factor', 'factor'))
+user <- read.csv('data/raw/JData_User.csv', colClasses=c('numeric', 'factor', 'factor', 'factor', 'factor'))
+product <- read.csv('data/raw/JData_Product.csv', colClasses=c('numeric', 'factor', 'factor', 'factor', 'factor', 'factor'))
+comment <- read.csv('data/raw/JData_Comment.csv', colClasses=c('factor', 'numeric', 'factor', 'factor', 'numeric'))
+action <- read.csv('data/raw/JData_Action_201602.csv', colClasses=c('numeric', 'numeric', 'character', 'factor', 'factor', 'factor', 'factor'))
 
 summary(user)
 summary(product)
