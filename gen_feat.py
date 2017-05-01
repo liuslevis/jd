@@ -18,6 +18,13 @@ ACTION_TYPES = 6
 
 comment_date = ['20160201', '20160208', '20160215', '20160222', '20160229', '20160307', '20160314', '20160321', '20160328', '20160404', '20160411', '20160415']
 
+# d1 ~ d2 训练数据 d3 ~ d4标签
+d1 = '20160201'
+d2 = '20160214'
+d3 = '20160215'
+d4 = '20160219'
+
+
 def strptime(dt_str):
     return datetime.strptime(dt_str.replace('-', ''), '%Y%m%d')
 
@@ -54,11 +61,6 @@ def convert_reg_tm(reg_tm):
         return 5
 
 # def convert_reg_tm(reg_tm):
-
-d1 = '20160201'
-d2 = '20160214'
-d3 = '20160215'
-d4 = '20160219'
 
 def get_user(d1, d2, d3, d4):
     cache_path = './cache/user_%s_%s_%s_%s.pkl' % (d1, d2, d3, d4)
@@ -207,7 +209,7 @@ df = pd.DataFrame({
 feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age', 'user_lv_cd', 'user_reg_tm', 'sku_a1', 'sku_a2', 'sku_a3']]
 df = pd.concat([df[['label', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6]], axis=1)
   
-df.to_csv('data/input/train_%s_%s_%s_%s.csv' % (d1, d2, d3, d4))
+df.to_csv('data/input/train_%s_%s_%s_%s.csv' % (d1, d2, d3, d4), index=False)
 
 # def make_train_data(d1, d2, d3, d4):
 # pass
