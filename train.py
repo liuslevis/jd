@@ -3,9 +3,9 @@ from sklearn.model_selection import train_test_split
 import xgboost as xgb
 
 d1 = '20160201'
-d2 = '20160214'
-d3 = '20160215'
-d4 = '20160219'
+d2 = '20160229'
+d3 = '20160301'
+d4 = '20160305'
 
 input_path = 'data/input/train_%s_%s_%s_%s.csv' % (d1, d2, d3, d4)
 

@@ -20,10 +20,9 @@ comment_date = ['20160201', '20160208', '20160215', '20160222', '20160229', '201
 
 # d1 ~ d2 训练数据 d3 ~ d4标签
 d1 = '20160201'
-d2 = '20160214'
-d3 = '20160215'
-d4 = '20160219'
-
+d2 = '20160229'
+d3 = '20160301'
+d4 = '20160305'
 
 def strptime(dt_str):
     return datetime.strptime(dt_str.replace('-', ''), '%Y%m%d')
@@ -114,29 +113,30 @@ index_product = product['sku_id'].to_dict() #index:product_id
 user_index    = inv_dict(index_user)   # user_id:index
 product_index = inv_dict(index_product) # sku_id :index
 
-
 user_item_train = {} # {i:j}
 user_item_label = np.zeros((len(user), len(product))) # M[i=user][j=item] = label
 user_item_action_ = [np.zeros((len(user), len(product))) for i in range(1 + ACTION_TYPES)] # M[type][i=user][j=item] = sum
 
 dates = list(set(map(lambda d:d[:-2], [d1, d2, d3, d4])))
+for date in dates:
+    with open(action_paths % date) as f:
+        for line in f.readlines():
+            if line.startswith('user_id,sku_id,time,model_id,type,cate,brand'):
+                continue
+            user_id, sku_id, time, model_id, type_, cate, brand = parse_action_line(line)
+            date = time.split(' ')[0].replace('-', '')
+            
+            if d1 <= date <= d4 and sku_id in product_index:
+                i = user_index[user_id]
+                j = product_index[sku_id]
 
-with open(action_paths % dates[0]) as f:
-    for line in f.readlines():
-        if line.startswith('user_id,sku_id,time,model_id,type,cate,brand'):
-            continue
-        user_id, sku_id, time, model_id, type_, cate, brand = parse_action_line(line)
-        date = time.split(' ')[0].replace('-', '')
-        
-        if d1 <= date <= d4 and sku_id in product_index:
-            i = user_index[user_id]
-            j = product_index[sku_id]
-            if 1 <= type_ <= 6 and d1 <= date <= d2:
-                user_item_action_[type_][i][j] += 1
-                user_item_train.update({i:j})
+                if 1 <= type_ <= 6 and d1 <= date <= d2:
+                    user_item_action_[type_][i][j] += 1
+                    user_item_train.update({i:j})
 
-            if type_ == 4 and d3 <= date <= d4: # buy
-                user_item_label[i][j] = 1
+                if type_ == 4 and d3 <= date <= d4: # buy
+                    user_item_label[i][j] = 1
+                    user_item_train.update({i:j})
 
 label = []
 act_1 = []
