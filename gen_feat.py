@@ -24,15 +24,16 @@ comment_date = ['20160201', '20160208', '20160215', '20160222', '20160229', '201
 # d3 = '20160301'
 # d4 = '20160305'
 
-d1 = '20160301'
-d2 = '20160331'
-d3 = '20160401'
-d4 = '20160405'
+# d1 = '20160301'
+# d2 = '20160331'
+# d3 = '20160401'
+# d4 = '20160405'
 
-# d1 = '20160201'
-# d2 = '20160415'
-# d3 = '20160416'
-# d4 = '20160417'
+# submission data
+d1 = '20160315'
+d2 = '20160415'
+d3 = '20160416'
+d4 = '20160420'
 
 
 def strptime(dt_str):
@@ -221,8 +222,4 @@ feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age',
 df = pd.concat([df[['user_id', 'sku_id', 'label', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6]], axis=1)
 
 df.to_csv('data/input/train_%s_%s_%s_%s.csv' % (d1, d2, d3, d4), index=False)
-
-# def make_train_data(d1, d2, d3, d4):
-# pass
-# train_data = make_train_data(d1, d2, d3, d4)
 
