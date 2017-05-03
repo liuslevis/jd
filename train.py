@@ -1,5 +1,6 @@
 from gen_feat import *
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_recall_fscore_support
 import xgboost as xgb
 
 d1 = '20160201'
@@ -7,17 +8,20 @@ d2 = '20160229'
 d3 = '20160301'
 d4 = '20160305'
 
+def strip_ids(df):
+    return df[list(set(df.columns) - set(['user_id', 'sku_id']))]
+
 input_path = 'data/input/train_%s_%s_%s_%s.csv' % (d1, d2, d3, d4)
 
 combi = pd.read_csv(input_path)
 features = list(set(combi.columns) - set('label'))
-X_combi = combi[features].values
-y_combi = combi['label'].values
+X_combi = combi[features]
+y_combi = combi['label']
 X_train, X_test, y_train, y_test = train_test_split(X_combi, y_combi, test_size=0.2, random_state=0)
 
 
-dtrain=xgb.DMatrix(X_train, label=y_train)
-dtest=xgb.DMatrix(X_test, label=y_test)
+dtrain=xgb.DMatrix(strip_ids(X_train), label=y_train)
+dtest=xgb.DMatrix(strip_ids(X_test), label=y_test)
 param = {'max_depth': 10, 'eta': 0.05, 'silent': 1, 'objective': 'binary:logistic'}
 param['nthread'] = 4
 param['eval_metric'] = "auc"
@@ -30,8 +34,33 @@ bst=xgb.train(plst, dtrain, num_round, evallist)
 y_test_pred = bst.predict(dtest)
 y_test
 
-report(y_test_pred, y_test)
 
+def report(X, features, y_true, y_pred, threshold=0.5):
+    assert X.shape[0]==y.shape[0]==y_pred.shape[0], 'rows of X, y, y_pred not the same'
+    pred = np.int32(y_pred > threshold)
+    label = y_true.values
+    tp = 0
+    tn = 0
+    fp = 0
+    fn = 0
+    for i in range(X.shape[0]):
+        row = X.iloc[[i]]
+        user_id = row['user_id'].values[0]
+        sku_id = row['sku_id'].values[0]
+        if pred[i] == 1 and label[i] == 1:
+            tp += 1
+        elif pred[i] == 0 and label[i] == 0:
+            tn += 1
+        elif pred[i] == 1 and label[i] == 0:
+            fp += 1
+        elif pred[i] == 0 and label[i] == 1:
+            fn += 0
+    acc = tp * 1.0 / (tp + fp)
+    recall = tp * 1.0 / (tp + fn)
+    print('\tTP\tTN\n\t%d\t%d\nFP\t%d\t%d\nFN' % (tp, tn, fp, fn))
+    print('acc:%.4f\nrecall:%.4f' % (acc, recall))
+
+report(X_test, features, y_test, y_test_pred, threshold=0.5)
 
 # def report(pred, label):
 

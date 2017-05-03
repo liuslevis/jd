@@ -207,8 +207,8 @@ df = pd.DataFrame({
     })
 
 feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age', 'user_lv_cd', 'user_reg_tm', 'sku_a1', 'sku_a2', 'sku_a3']]
-df = pd.concat([df[['label', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6]], axis=1)
-  
+df = pd.concat([df[['user_id', 'sku_id', 'label', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6]], axis=1)
+
 df.to_csv('data/input/train_%s_%s_%s_%s.csv' % (d1, d2, d3, d4), index=False)
 
 # def make_train_data(d1, d2, d3, d4):
