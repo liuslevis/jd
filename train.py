@@ -1,3 +1,4 @@
+#TODO 测试集要用训练集的 User.all * Product.all
 from gen_feat import *
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_recall_fscore_support
@@ -37,8 +38,8 @@ y_test
 
 def report(X, features, y_true, y_pred, threshold=0.5):
     assert X.shape[0]==y.shape[0]==y_pred.shape[0], 'rows of X, y, y_pred not the same'
-    pred = np.int32(y_pred > threshold)
-    label = y_true.values
+    y_pred = np.int32(y_pred > threshold)
+    y_true = y_true.values
     tp = 0
     tn = 0
     fp = 0
@@ -47,18 +48,24 @@ def report(X, features, y_true, y_pred, threshold=0.5):
         row = X.iloc[[i]]
         user_id = row['user_id'].values[0]
         sku_id = row['sku_id'].values[0]
-        if pred[i] == 1 and label[i] == 1:
+        if y_pred[i] == 1 and y_true[i] == 1:
             tp += 1
-        elif pred[i] == 0 and label[i] == 0:
+        elif y_pred[i] == 0 and y_true[i] == 0:
             tn += 1
-        elif pred[i] == 1 and label[i] == 0:
+        elif y_pred[i] == 1 and y_true[i] == 0:
             fp += 1
-        elif pred[i] == 0 and label[i] == 1:
+        elif y_pred[i] == 0 and y_true[i] == 1:
             fn += 0
-    acc = tp * 1.0 / (tp + fp)
+    precise = tp * 1.0 / (tp + fp)
     recall = tp * 1.0 / (tp + fn)
+
+    # f11 = 6 * recall * precise / (5 * recall + precise)
+    # f12 = 5 * recall * precise / (2 * recall + 3 * precise)
+    # score = f11 * 0.4 + f12 * 0.6
     print('\tTP\tTN\n\t%d\t%d\nFP\t%d\t%d\nFN' % (tp, tn, fp, fn))
-    print('acc:%.4f\nrecall:%.4f' % (acc, recall))
+    print('precise:%.4f\trecall:%.4f' % (precise, recall))
+    # print('f1:%.4f\tf2:%.4f' % (f11, f12))
+    # print('score:%.4f' % (score))
 
 report(X_test, features, y_test, y_test_pred, threshold=0.5)
 
