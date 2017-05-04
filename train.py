@@ -1,85 +1,140 @@
-#TODO 测试集要用训练集的 User.all * Product.all
 from gen_feat import *
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import confusion_matrix
 import xgboost as xgb
+import matplotlib.pyplot as plt 
 
-# d1 = '20160201'
-# d2 = '20160229'
-# d3 = '20160301'
-# d4 = '20160305'
+model_path = 'data/output/bst.model'
+threshold = 0.5
+missing_value = -999.0
 
-d1 = '20160315'
-d2 = '20160415'
-d3 = '20160416'
-d4 = '20160420'
+def strip_id(df):
+    sel_cols = list(set(df.columns) - set(['user_id', 'sku_id']))
+    return df[sel_cols]
 
-input_path = 'data/input/train_%s_%s_%s_%s.csv' % (d1, d2, d3, d4)
+def read_input_data(d1):
+    d2 = ndays_after(28, d1)
+    d3 = ndays_after(1, d2)
+    d4 = ndays_after(4, d3)
+    return pd.read_csv('data/input/train_%s_%s_%s_%s.csv' % (d1, d2, d3, d4))
 
-def strip_ids(df):
-    return df[list(set(df.columns) - set(['user_id', 'sku_id']))]
+def train(d1):
+    print('\ntrain %s' % d1)
+    combi = read_input_data(d1='20160201')
+    features = list(set(combi.columns) - set(['label']))
+    combi_true = combi[combi['label']==1]
+    combi_false = combi[combi['label']==0]
+    combi = pd.concat([combi_true, combi_false[:len(combi_true)]])
+    X_combi = combi[features]
+    y_combi = combi['label']
+    X_train, X_test, y_train, y_test = train_test_split(X_combi, y_combi, test_size=0.5, random_state=0)
 
-def report(X, features, y_true, y_pred, threshold=0.5):
-    assert X.shape[0]==y.shape[0]==y_pred.shape[0], 'rows of X, y, y_pred not the same'
-    y_pred = np.int32(y_pred > threshold)
-    y_true = y_true.values
-    tp = 0
-    tn = 0
-    fp = 0
-    fn = 0
-    for i in range(X.shape[0]):
-        row = X.iloc[[i]]
-        user_id = row['user_id'].values[0]
-        sku_id = row['sku_id'].values[0]
-        if y_pred[i] == 1 and y_true[i] == 1:
-            tp += 1
-        elif y_pred[i] == 0 and y_true[i] == 0:
-            tn += 1
-        elif y_pred[i] == 1 and y_true[i] == 0:
-            fp += 1
-        elif y_pred[i] == 0 and y_true[i] == 1:
-            fn += 0
-    precise = tp * 1.0 / (tp + fp)
-    recall = tp * 1.0 / (tp + fn)
+    d_train = xgb.DMatrix(strip_id(X_train), label=y_train, missing = missing_value)
+    d_test = xgb.DMatrix(strip_id(X_test), label=y_test, missing = missing_value)
+    params = {
+        'max_depth':2, 
+        'eta':0.05, 
+        'silent':1, 
+        'objective':'binary:logistic', 
+        'nthread':4, 
+        'eval_metric':['auc', 'logloss']
+        }
+    evallist = [(d_test, 'eval'), (d_train, 'train')]
+    num_round = 2
+    bst = xgb.train(params, d_train, num_round, evallist)
+    bst.save_model(model_path)
+    xgb.plot_importance(bst)
+    y_test_pred = np.int32(bst.predict(d_test) > threshold)
+    print(confusion_matrix(y_test, y_test_pred))
+    return bst
 
-    # f11 = 6 * recall * precise / (5 * recall + precise)
-    # f12 = 5 * recall * precise / (2 * recall + 3 * precise)
-    # score = f11 * 0.4 + f12 * 0.6
-    print('\tTP\tTN\n\t%d\t%d\nFP\t%d\t%d\nFN' % (tp, tn, fp, fn))
-    print('precise:%.4f\trecall:%.4f' % (precise, recall))
-    # print('f1:%.4f\tf2:%.4f' % (f11, f12))
-    # print('score:%.4f' % (score))
+def report(y, y_pred):
+    print(y)
+    print(y_pred)
 
-# Train
-combi = pd.read_csv(input_path)
-features = list(set(combi.columns) - set('label'))
-X_combi = combi[features]
-y_combi = combi['label']
-X_train, X_test, y_train, y_test = train_test_split(X_combi, y_combi, test_size=0.2, random_state=0)
+def report(X, y, y_pred):
+    y = y.values
+
+    true_records = [] # [(user_id,item_id),...]
+    pred_records = []
+
+    true_users = set()
+    pred_users = set()
 
 
-dtrain=xgb.DMatrix(strip_ids(X_train), label=y_train)
-dtest=xgb.DMatrix(strip_ids(X_test), label=y_test)
-param = {'max_depth': 10, 'eta': 0.05, 'silent': 1, 'objective': 'binary:logistic'}
-param['nthread'] = 4
-param['eval_metric'] = "auc"
-plst = list(param.items())
-plst += [('eval_metric', 'logloss')]
-evallist = [(dtest, 'eval'), (dtrain, 'train')]
-num_round = 10
-bst=xgb.train(plst, dtrain, num_round, evallist)
+    for i,row in X[['user_id','sku_id']].iterrows():
+        user_id, item_id = row['user_id'], row['sku_id']
+        if y[i] == 1:
+            true_records.append((user_id, item_id))
+            true_users.add(user_id)
+        if y_pred[i]==1:
+            pred_records.append((user_id, item_id))
+            pred_users.add(user_id)
 
-y_test_pred = bst.predict(dtest)
-y_test
+    if len(pred_users) == 0:
+        print('no buy prediction!')
+        return
 
-report(X_test, features, y_test, y_test_pred, threshold=0.5)
+    all_users = pred_users.union(true_users)
+    all_records = pred_records + true_records
 
-# Submission: TODO all same value
-X_submit = pd.read_csv(input_path)[features]
-dsubmit = xgb.DMatrix(strip_ids(X_submit))
-y_sub = bst.predict(dsubmit)
+    pos = 0
+    neg = 0
+    for pred_user in pred_users:
+        if pred_user in true_users:
+            pos += 1
+        else:
+            neg += 1
+    user_recall = 1.0 * pos / len(all_users)
+    user_acc = 1.0 * pos / ( pos + neg)
 
+    pos = 0
+    neg = 0
+    for pred_record in pred_records:
+        if pred_record in true_records:
+            pos += 1
+        else:
+            neg += 1
+    record_recall = 1.0 * pos / len(pred_records)
+    record_acc = 1.0 * pos / ( pos + neg)
+
+    F11 = 6.0 * user_recall * user_acc / (5.0 * user_recall + user_acc)
+    F12 = 5.0 * record_acc * record_recall / (2.0 * record_recall + 3 * record_acc)
+    score = 0.4 * F11 + 0.6 * F12
+
+    print('F11 = %.4f' % F11)
+    print('F12 = %.4f' % F12)
+    print('score =  %.4f' % score)
+
+def validate(d1):
+    print('\nvalidate %s' % d1)
+    combi = read_input_data(d1)
+    features = list(set(combi.columns) - set(['label']))
+    X_valid = combi[features]
+    y_valid = combi['label']
+    d_valid = xgb.DMatrix(strip_id(X_valid), label=y_valid, missing = missing_value)
+
+    bst = xgb.Booster({'nthread':4})
+    bst.load_model(model_path)
+    y_valid_score = bst.predict(d_valid)
+    y_valid_pred = np.int32(y_valid_score > threshold)
+
+    print(confusion_matrix(y_valid, y_valid_pred))
+    report(X_valid, y_valid, y_valid_pred)
+
+
+bst = train('20160201')
+validate('20160202')
+# validate('20160203')
+# validate('20160204')
+# validate('20160205')
+# validate('20160206')
+
+# plt.style.use('ggplot') 
+# xgb.plot_importance(bst) 
+# xgb.plot_tree(bst, num_trees=1) 
+# xgb.to_graphviz(bst, num_trees=1)
+# plt.show()
 
 if __name__ == '__main__':
-    xgboost_cv()
-    # xgboost_make_submission()
+    pass

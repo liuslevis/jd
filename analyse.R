@@ -1,3 +1,21 @@
+library(randomForest)
+combi <- read.csv('data/input/train_20160201_20160229_20160301_20160305.csv', colClasses=c('factor','numeric','numeric',rep('numeric', 6), rep('factor',40)))
+summary(combi)
+
+set.seed(123)
+train_ind <- sample(seq_len(nrow(combi)), size = floor(0.75 * nrow(combi)))
+
+train <- combi[train_ind, ]
+test <- combi[-train_ind, ]
+formula <- label ~  act_1 + act_2 + act_3 + act_4 + act_5 + act_6 + user_sex_.2147483648 + user_sex_0 + user_sex_1 + user_sex_2 + user_age_.1 + user_age_0 + user_age_1 + user_age_2 + user_age_3 + user_age_4 + user_age_5 + user_age_6 + user_lv_cd_1 + user_lv_cd_2 + user_lv_cd_3 + user_lv_cd_4 + user_lv_cd_5 + user_reg_tm_0 + user_reg_tm_1 + user_reg_tm_2 + user_reg_tm_3 + user_reg_tm_4 + user_reg_tm_5 + sku_a1_.1 + sku_a1_1 + sku_a1_2 + sku_a1_3 + sku_a2_.1 + sku_a2_1 + sku_a2_2 + sku_a3_.1 + sku_a3_1 + sku_a3_2 
+rf <- randomForest(formula=formula, data=train, importance=TRUE, ntree=200, do.trace=0, nodesize=2**3)
+rf
+#Confusion matrix:
+#       0   1  class.error
+# 0 38028   3 7.888302e-05
+# 1   355 410 4.640523e-01
+varImpPlot(rf)
+
 user <- read.csv('data/raw/JData_User.csv', colClasses=c('numeric', 'factor', 'factor', 'factor', 'factor'))
 product <- read.csv('data/raw/JData_Product.csv', colClasses=c('numeric', 'factor', 'factor', 'factor', 'factor', 'factor'))
 comment <- read.csv('data/raw/JData_Comment.csv', colClasses=c('factor', 'numeric', 'factor', 'factor', 'numeric'))
