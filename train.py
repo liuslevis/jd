@@ -4,6 +4,7 @@ from sklearn.metrics import confusion_matrix
 import xgboost as xgb
 import matplotlib.pyplot as plt 
 
+train_path = 'data/input/train_%s_%s_%s_%s.csv'
 model_path = 'data/output/bst.model'
 threshold = 0.5
 missing_value = -999.0
@@ -16,11 +17,11 @@ def read_input_data(d1):
     d2 = ndays_after(28, d1)
     d3 = ndays_after(1, d2)
     d4 = ndays_after(4, d3)
-    return pd.read_csv('data/input/train_%s_%s_%s_%s.csv' % (d1, d2, d3, d4))
+    return pd.read_csv(train_path % (d1, d2, d3, d4))
 
-def train(d1):
-    print('\ntrain %s' % d1)
-    combi = read_input_data(d1='20160201')
+def train(d1_li):
+    print('\ntrain ', d1_li)
+    combi = pd.concat([read_input_data(d1) for d1 in d1_li])
     features = list(set(combi.columns) - set(['label']))
     combi_true = combi[combi['label']==1]
     combi_false = combi[combi['label']==0]
@@ -119,11 +120,12 @@ def validate(d1):
     y_valid_score = bst.predict(d_valid)
     y_valid_pred = np.int32(y_valid_score > threshold)
 
-    print(confusion_matrix(y_valid, y_valid_pred))
+    cm = confusion_matrix(y_valid, y_valid_pred)
+    print_cm(cm, labels=['0', '1'])
     report(X_valid, y_valid, y_valid_pred)
 
 
-bst = train('20160201')
+bst = train(['201602%02d' % i for i in range(1,8)])
 validate('20160202')
 # validate('20160203')
 # validate('20160204')
