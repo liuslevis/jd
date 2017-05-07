@@ -8,6 +8,7 @@ train_path = 'data/input/train_%s_%s_%s_%s.csv'
 model_path = 'data/output/bst.model'
 threshold = 0.5
 missing_value = -999.0
+labels = ['0', '1']
 
 def strip_id(df):
     sel_cols = list(set(df.columns) - set(['user_id', 'sku_id']))
@@ -19,9 +20,10 @@ def read_input_data(d1):
     d4 = ndays_after(4, d3)
     return pd.read_csv(train_path % (d1, d2, d3, d4))
 
-def train(d1_li):
-    print('\ntrain ', d1_li)
-    combi = pd.concat([read_input_data(d1) for d1 in d1_li])
+def train(d1, print_cm=False):
+    print('\ntrain')
+    print(d1)
+    combi = read_input_data(d1)
     features = list(set(combi.columns) - set(['label']))
     combi_true = combi[combi['label']==1]
     combi_false = combi[combi['label']==0]
@@ -46,14 +48,13 @@ def train(d1_li):
     bst.save_model(model_path)
     xgb.plot_importance(bst)
     y_test_pred = np.int32(bst.predict(d_test) > threshold)
-    print(confusion_matrix(y_test, y_test_pred))
+    if print_cm:
+        cm = confusion_matrix(y_test, y_test_pred)
+        print_cm(cm, labels)
     return bst
 
-def report(y, y_pred):
-    print(y)
-    print(y_pred)
-
-def report(X, y, y_pred):
+# F11,F12,score
+def report(X, y, y_pred, print_score=False):
     y = y.values
 
     true_records = [] # [(user_id,item_id),...]
@@ -102,13 +103,13 @@ def report(X, y, y_pred):
     F11 = 6.0 * user_recall * user_acc / (5.0 * user_recall + user_acc)
     F12 = 5.0 * record_acc * record_recall / (2.0 * record_recall + 3 * record_acc)
     score = 0.4 * F11 + 0.6 * F12
+    if print_score:
+        print('F11 = %.4f' % F11)
+        print('F12 = %.4f' % F12)
+        print('score =  %.4f' % score)
+    return score, F11, F12
 
-    print('F11 = %.4f' % F11)
-    print('F12 = %.4f' % F12)
-    print('score =  %.4f' % score)
-
-def validate(d1):
-    print('\nvalidate %s' % d1)
+def validate(d1, print_cm=False):
     combi = read_input_data(d1)
     features = list(set(combi.columns) - set(['label']))
     X_valid = combi[features]
@@ -120,17 +121,20 @@ def validate(d1):
     y_valid_score = bst.predict(d_valid)
     y_valid_pred = np.int32(y_valid_score > threshold)
 
-    cm = confusion_matrix(y_valid, y_valid_pred)
-    print_cm(cm, labels=['0', '1'])
-    report(X_valid, y_valid, y_valid_pred)
+    if print_cm:
+        cm = confusion_matrix(y_valid, y_valid_pred)
+        print_cm(cm, labels)
+
+    score, F11, F12 = report(X_valid, y_valid, y_valid_pred, print_score=False)
+    print('%s\t%.4f\t%.4f\t%.4f' % (d1, score, F11, F12))
 
 
-bst = train(['201602%02d' % i for i in range(1,8)])
-validate('20160202')
-# validate('20160203')
-# validate('20160204')
-# validate('20160205')
-# validate('20160206')
+for d1 in range(1, 5):
+    bst = train('201602%02d' % d1)
+
+    print('validate\tscore\tF11\tF12')
+    for i in range(d1+1, d1+4):
+        validate('201602%02d' % i)
 
 # plt.style.use('ggplot') 
 # xgb.plot_importance(bst) 

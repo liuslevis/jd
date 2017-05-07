@@ -18,20 +18,6 @@ ACTION_TYPES = 6
 
 comment_date = ['20160201', '20160208', '20160215', '20160222', '20160229', '20160307', '20160314', '20160321', '20160328', '20160404', '20160411', '20160415']
 
-# d1 ~ d2 训练数据 d3 ~ d4标签
-# d1 = '20160201'
-# d2 = '20160229'
-# d3 = '20160301'
-# d4 = '20160305'
-
-# d1 = '20160301'
-# d2 = '20160331'
-# d3 = '20160401'
-# d4 = '20160405'
-
-# submission data
-# d1 = '20160208'
-
 def ndays_after(ndays, date_str):
     return datetime.strftime(datetime.strptime(date_str, '%Y%m%d') + timedelta(days=ndays), '%Y%m%d')
 
@@ -71,7 +57,7 @@ def convert_reg_tm(reg_tm):
         return 5
 
 def get_user(d1, d2, d3, d4):
-    cache_path = './cache/user_%s_%s_%s_%s.pkl' % (d1, d2, d3, d4)
+    cache_path = './cache/user_%s.pkl' % (d4)
     if os.path.exists(cache_path):
         df = pickle.load(open(cache_path, 'rb'))
         return df
@@ -81,8 +67,6 @@ def get_user(d1, d2, d3, d4):
         df['user_reg_tm'] = df['user_reg_tm']\
             .map(lambda reg_tm : (strptime(d4) - strptime(reg_tm)).days if type(reg_tm) is str else -1)\
             .map(convert_reg_tm)
-        # feats = [pd.get_dummies(df[col], prefix=col) for col in ['age', 'sex', 'user_lv_cd', 'user_reg_tm']]
-        # df = pd.concat([df['user_id'], feats[0], feats[1], feats[2], feats[3]], axis=1)
         pickle.dump(df, open(cache_path, 'wb'))
         return df
 
@@ -93,8 +77,6 @@ def get_product():
         return df
     else:
         df = pd.read_csv(product_path)
-        # feats = [pd.get_dummies(df[col], prefix=col) for col in ['a1', 'a2', 'a3', 'cate']] # brand
-        # df = pd.concat([df['sku_id', 'brand'], feats[0], feats[1], feats[2], feats[3]], axis=1)
         pickle.dump(df, open(cache_path, 'wb'))
         return df
 
@@ -229,12 +211,16 @@ def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=
                 cell = cell if cm[i, j] > hide_threshold else empty_cell
             print(cell, end=" ")
         print()
-        
+
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print('usage: ipython3 gen_feat.py 20160201')
     else:
+        # d1 ~ d2 训练数据 d3 ~ d4标签
         # d1 = '20160201'
+        # d2 = '20160229'
+        # d3 = '20160301'
+        # d4 = '20160305'
         d1 = sys.argv[1]
         d2 = ndays_after(28, d1)
         d3 = ndays_after(1, d2)
