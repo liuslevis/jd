@@ -1,0 +1,49 @@
+train
+20160201
+20160202
+[0] eval-auc:0.891644   eval-logloss:0.667156   train-auc:0.896404  train-logloss:0.666712
+[1] eval-auc:0.891644   eval-logloss:0.643644   train-auc:0.896404  train-logloss:0.64278
+validate    score   F11 F12
+20160203    0.3896  0.3821  0.3947
+20160204    0.3694  0.3620  0.3743
+20160205    0.3520  0.3450  0.3568
+
+train
+20160202
+20160203
+[0] eval-auc:0.902407   eval-logloss:0.665134   train-auc:0.903559  train-logloss:0.665599
+[1] eval-auc:0.902407   eval-logloss:0.639826   train-auc:0.903559  train-logloss:0.640656
+validate    score   F11 F12
+20160204    0.3694  0.3620  0.3743
+20160205    0.3520  0.3450  0.3568
+20160206    0.3534  0.3447  0.3592
+
+train
+20160203
+20160204
+[0] eval-auc:0.902595   eval-logloss:0.666099   train-auc:0.895947  train-logloss:0.666709
+[1] eval-auc:0.902595   eval-logloss:0.641608   train-auc:0.895947  train-logloss:0.642777
+validate    score   F11 F12
+20160205    0.3520  0.3450  0.3568
+20160206    0.3534  0.3447  0.3592
+20160207    0.3633  0.3519  0.3709
+
+train
+20160204
+20160205
+[0] eval-auc:0.885185   eval-logloss:0.667312   train-auc:0.899264  train-logloss:0.6662
+[1] eval-auc:0.885185   eval-logloss:0.643968   train-auc:0.899264  train-logloss:0.641805
+validate    score   F11 F12
+20160206    0.3534  0.3447  0.3592
+20160207    0.3633  0.3519  0.3709
+20160208    0.2601  0.2566  0.2624
+
+train
+20160205
+20160206
+[0] eval-auc:0.879412   eval-logloss:0.668371   train-auc:0.883545  train-logloss:0.668187
+[1] eval-auc:0.879412   eval-logloss:0.645963   train-auc:0.883545  train-logloss:0.645591
+validate    score   F11 F12
+20160207    0.3633  0.3519  0.3709
+20160208    0.2601  0.2566  0.2624
+20160209    0.3369  0.3289  0.3421
