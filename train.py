@@ -109,6 +109,32 @@ def report(X, y, y_pred, print_score=False):
         print('score =  %.4f' % score)
     return score, F11, F12
 
+def make_submission(d1, submission_path):
+    combi = read_input_data(d1)
+    features = list(set(combi.columns) - set(['label']))
+    X = combi[features]
+    y = combi['label']
+    data = xgb.DMatrix(strip_id(X), label=y, missing = missing_value)
+    
+    bst = xgb.Booster({'nthread':4})
+    bst.load_model(model_path)    
+    y_score = bst.predict(data)
+    y_pred = np.int32(y_score > threshold)
+
+    pred_records = {} #{user_id:sku_id}
+    for i,row in X[['user_id','sku_id']].iterrows():
+        user_id, item_id = row['user_id'], row['sku_id']
+        score = y_score[i]
+        if y_pred[i]==1:
+            if user_id not in pred_records or score > pred_records[user_id]:
+                pred_records.update({user_id:item_id})
+
+    df = pd.DataFrame(list(pred_records.items()), columns=['user_id','sku_id'])
+    df.to_csv(submission_path, index=False)
+    print('\nsubmission\tpath')
+    print('%s\t%s' %(d1, submission_path))
+    return df
+
 def validate(d1, print_cm=False):
     combi = read_input_data(d1)
     features = list(set(combi.columns) - set(['label']))
@@ -129,12 +155,16 @@ def validate(d1, print_cm=False):
     print('%s\t%.4f\t%.4f\t%.4f' % (d1, score, F11, F12))
 
 
-for d1 in range(1, 5):
-    bst = train('201602%02d' % d1)
+# for d1 in range(201, 205):
+#     bst = train('2016%04d' % d1)
 
-    print('validate\tscore\tF11\tF12')
-    for i in range(d1+1, d1+4):
-        validate('201602%02d' % i)
+#     print('validate\tscore\tF11\tF12')
+#     for i in range(d1+5, d1+8):
+#         validate('2016%04d' % i)
+
+bst = train('20160313')
+make_submission('20160318', 'data/output/submission_v1.csv')
+
 
 # plt.style.use('ggplot') 
 # xgb.plot_importance(bst) 
