@@ -138,7 +138,7 @@ def make_train_data(d1, d2, d3, d4):
     user_item_train = {} # {i:j}
     user_item_label = np.zeros((user_len, product_len)) # M[i=user][j=item] = label
     user_item_action_ = np.zeros((ACTION_TYPES+1, user_len, product_len)) # M[type][i=user][j=item] = sum
-    user_a_ = np.zeros((4, user_len, product_len))
+    user_a_ = np.zeros((4, user_len, product_len)) #M[a_2][i=user][j=item]
 
     dates = list(set(map(lambda d:d[:-2], [d1, d2, d3, d4])))
     for date in dates:
@@ -189,9 +189,9 @@ def make_train_data(d1, d2, d3, d4):
         'sku_cate',
         'sku_brand',
 
-        # 'user_a1',
-        # 'user_a2',
-        # 'user_a3',
+        'user_a1',
+        'user_a2',
+        'user_a3',
         ]
 
     table = []
@@ -222,18 +222,15 @@ def make_train_data(d1, d2, d3, d4):
             np.int32(product['index'][j]['cate']),
             np.int32(product['index'][j]['brand']),
 
-            # np.int(user_a_[1][i][j]),
-            # np.int(user_a_[2][i][j]),
-            # np.int(user_a_[3][i][j]),
+            np.int(user_a_[1][i][j]),
+            np.int(user_a_[2][i][j]),
+            np.int(user_a_[3][i][j]),
 
             ])
 
     df = pd.DataFrame(table, columns=columns)
-
-    feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age', 'user_lv_cd', 'user_reg_tm', 'sku_a1', 'sku_a2', 'sku_a3']]
-    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6]], axis=1)
-    # df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6], feats[7], feats[8], feats[9]], axis=1)
-    # feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age', 'user_lv_cd', 'user_reg_tm', 'sku_a1', 'sku_a2', 'sku_a3', 'user_a1', 'user_a2', 'user_a3']]
+    feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age', 'user_lv_cd', 'user_reg_tm', 'sku_a1', 'sku_a2', 'sku_a3', 'user_a1', 'user_a2', 'user_a3']]
+    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6], feats[7], feats[8], feats[9]], axis=1)
 
     df.to_csv(train_path % (d1, d2, d3, d4), index=False)
 
