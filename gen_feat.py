@@ -9,6 +9,9 @@ import os,sys
 import math
 import numpy as np
 
+train_days = 14 # 28
+label_days = 4
+
 action_paths = './data/raw/JData_Action_%s.csv' 
 comment_path = './data/raw/JData_Comment.csv'
 product_path = './data/raw/JData_Product.csv'
@@ -25,6 +28,29 @@ def ndays_after(ndays, date_str):
 
 def strptime(dt_str):
     return datetime.strptime(dt_str.replace('-', ''), '%Y%m%d')
+
+def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
+    """pretty print for confusion matrixes"""
+    columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
+    empty_cell = " " * columnwidth
+    # Print header
+    print("    " + empty_cell, end=" ")
+    for label in labels:
+        print("%{0}s".format(columnwidth) % label, end=" ")
+    print()
+    # Print rows
+    for i, label1 in enumerate(labels):
+        print("    %{0}s".format(columnwidth) % label1, end=" ")
+        for j in range(len(labels)):
+            cell = "%{0}.1f".format(columnwidth) % cm[i, j]
+            if hide_zeroes:
+                cell = cell if float(cm[i, j]) != 0 else empty_cell
+            if hide_diagonal:
+                cell = cell if i != j else empty_cell
+            if hide_threshold:
+                cell = cell if cm[i, j] > hide_threshold else empty_cell
+            print(cell, end=" ")
+        print()
 
 def convert_age(age_str):
     if age_str == '-1':
@@ -128,12 +154,19 @@ def parse_action_line(line):
     brand = int(brand) if len(brand) > 0 else -1
     return user_id, sku_id, time, model_id, action, cate, brand
 
-# d1 ~ d2 训练数据 d3 ~ d4标签
+# d1 = '20160206'
+# d2 = ndays_after(train_days, d1)
+# d3 = ndays_after(1, d2)
+# d4 = ndays_after(4, d3)
 def make_train_data(d1, d2, d3, d4):
     user = get_user(d1, d2, d3, d4)
     product = get_product()
-    user_len = len(user['user_id'])
-    product_len = len(product['sku_id'])
+
+    user_set = set(user['user_id'].keys())
+    sku_set = set(product['sku_id'].keys())
+
+    user_len = len(user_set)
+    product_len = len(sku_set)
 
     user_item_train = {} # {i:j}
     user_item_label = np.zeros((user_len, product_len)) # M[i=user][j=item] = label
@@ -149,23 +182,32 @@ def make_train_data(d1, d2, d3, d4):
                 user_id, sku_id, time, model_id, type_, cate, brand = parse_action_line(line)
                 date = time.split(' ')[0].replace('-', '')
                 
-                if d1 <= date <= d4 and sku_id in product['sku_id']:
+                if date > d4:
+                    break
+
+                # record in d1~d4
+                if d1 <= date <= d4 and sku_id in sku_set:
                     i = user['user_id'][user_id]['index']
                     j = product['sku_id'][sku_id]['index']
 
-                    if 1 <= type_ <= 6 and d1 <= date <= d2:
+                    # train d1~d2
+                    if d1 <= date <= d2 and 1 <= type_ <= 6:
                         if type_ >= user_item_action_.shape[0] or i >= user_item_action_.shape[1] or j >= user_item_action_.shape[2]:
                             print('debug', user_item_action_.shape, type_, i, j)
                         user_item_action_[type_][i][j] += 1
                         user_item_train.update({i:j})
 
-                    if type_ == 4 and d3 <= date <= d4: # buy
+                        # user_a1 2 3
+                        user_a_[1][i][j] = product['index'][j]['a1']
+                        user_a_[2][i][j] = product['index'][j]['a2']
+                        user_a_[3][i][j] = product['index'][j]['a3']
+
+                    # label d3~d4
+                    if d3 <= date <= d4 and type_ == 4:
                         user_item_label[i][j] = 1
                         user_item_train.update({i:j})
 
-                    user_a_[1][i][j] = product['index'][j]['a1']
-                    user_a_[2][i][j] = product['index'][j]['a2']
-                    user_a_[3][i][j] = product['index'][j]['a3']
+                    
                     
     columns = [
         'label',
@@ -232,30 +274,9 @@ def make_train_data(d1, d2, d3, d4):
     feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age', 'user_lv_cd', 'user_reg_tm', 'sku_a1', 'sku_a2', 'sku_a3', 'user_a1', 'user_a2', 'user_a3']]
     df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6], feats[7], feats[8], feats[9]], axis=1)
 
-    df.to_csv(train_path % (d1, d2, d3, d4), index=False)
-
-def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
-    """pretty print for confusion matrixes"""
-    columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
-    empty_cell = " " * columnwidth
-    # Print header
-    print("    " + empty_cell, end=" ")
-    for label in labels:
-        print("%{0}s".format(columnwidth) % label, end=" ")
-    print()
-    # Print rows
-    for i, label1 in enumerate(labels):
-        print("    %{0}s".format(columnwidth) % label1, end=" ")
-        for j in range(len(labels)):
-            cell = "%{0}.1f".format(columnwidth) % cm[i, j]
-            if hide_zeroes:
-                cell = cell if float(cm[i, j]) != 0 else empty_cell
-            if hide_diagonal:
-                cell = cell if i != j else empty_cell
-            if hide_threshold:
-                cell = cell if cm[i, j] > hide_threshold else empty_cell
-            print(cell, end=" ")
-        print()
+    path = train_path % (d1, d2, d3, d4)
+    df.to_csv(path, index=False)
+    print(path)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -264,11 +285,9 @@ if __name__ == '__main__':
         print('\tipython3 gen_feat.py 20160318')
     else:
         # d1 ~ d2 训练数据 d3 ~ d4标签
-        # d1 = '20160313'
-        # d1 = '20160318'
         d1 = sys.argv[1]
-        d2 = ndays_after(28, d1)
+        d2 = ndays_after(train_days, d1)
         d3 = ndays_after(1, d2)
-        d4 = ndays_after(4, d3)
+        d4 = ndays_after(label_days, d3)
 
         make_train_data(d1, d2, d3, d4)

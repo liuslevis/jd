@@ -11,7 +11,11 @@ submission_path = 'data/output/submission.csv'
 threshold = 0.5
 missing_value = -999.0
 labels = ['0', '1']
-ignore_feats = ['user_a1', 'user_a2', 'user_a3']
+ignore_feats = [
+    # 'user_a1', 
+    # 'user_a2', 
+    # 'user_a3',
+    ]
 
 def get_feat(df, ignore_feats):
     ignores = []
@@ -26,9 +30,9 @@ def strip_id(df):
     return df[sel_cols]
 
 def read_input_data(d1):
-    d2 = ndays_after(28, d1)
+    d2 = ndays_after(train_days, d1)
     d3 = ndays_after(1, d2)
-    d4 = ndays_after(4, d3)
+    d4 = ndays_after(label_days, d3)
     return pd.read_csv(train_path % (d1, d2, d3, d4))
 
 def train(d1, print_cm=False):
@@ -175,8 +179,8 @@ def validate(d1_li, print_cm=False):
 bst = train('20160201')
 validate(['20160206'])
 
-bst = train('20160301')
-validate(['20160306'])
+# bst = train('20160327')
+# validate(['20160401'])
 
 # make_submission('20160318', submission_path)
 
