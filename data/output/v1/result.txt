@@ -1,0 +1,36 @@
+]0;IPython: Dev/jd
+train
+20160201
+[0]	eval-auc:0.873342	eval-logloss:0.669721	train-auc:0.878079	train-logloss:0.669384
+[1]	eval-auc:0.89932	eval-logloss:0.648144	train-auc:0.904619	train-logloss:0.647825
+validate	score	F11	F12
+20160206	0.1535	0.1523	0.1544
+20160207	0.1511	0.1498	0.1519
+20160208	0.1001	0.0997	0.1003
+
+train
+20160202
+[0]	eval-auc:0.904584	eval-logloss:0.665913	train-auc:0.911739	train-logloss:0.665435
+[1]	eval-auc:0.904584	eval-logloss:0.641261	train-auc:0.911739	train-logloss:0.640324
+validate	score	F11	F12
+20160207	0.3633	0.3519	0.3709
+20160208	0.2601	0.2566	0.2624
+20160209	0.3369	0.3289	0.3421
+
+train
+20160203
+[0]	eval-auc:0.899657	eval-logloss:0.666531	train-auc:0.888903	train-logloss:0.667573
+[1]	eval-auc:0.913812	eval-logloss:0.642226	train-auc:0.903514	train-logloss:0.644413
+validate	score	F11	F12
+20160208	0.2601	0.2566	0.2624
+20160209	0.3369	0.3289	0.3421
+20160210	0.2834	0.2788	0.2864
+
+train
+20160204
+[0]	eval-auc:0.900688	eval-logloss:0.666778	train-auc:0.892805	train-logloss:0.667386
+[1]	eval-auc:0.900688	eval-logloss:0.642896	train-auc:0.892805	train-logloss:0.644055
+validate	score	F11	F12
+20160209	0.3369	0.3289	0.3421
+20160210	0.2834	0.2788	0.2864
+20160211	0.4445	0.4357	0.4504
