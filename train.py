@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 
 train_path = 'data/input/train_%s_%s_%s_%s.csv'
 model_path = 'data/output/bst.model'
+submission_path = 'data/output/submission.csv'
+
 threshold = 0.5
 missing_value = -999.0
 labels = ['0', '1']
@@ -135,35 +137,41 @@ def make_submission(d1, submission_path):
     print('%s\t%s' %(d1, submission_path))
     return df
 
-def validate(d1, print_cm=False):
-    combi = read_input_data(d1)
-    features = list(set(combi.columns) - set(['label']))
-    X_valid = combi[features]
-    y_valid = combi['label']
-    d_valid = xgb.DMatrix(strip_id(X_valid), label=y_valid, missing = missing_value)
+def validate(d1_li, print_cm=False):
+    print('validate\tscore\tF11\tF12')
+    for d1 in d1_li:
+        combi = read_input_data(d1)
+        # features = list(set(combi.columns) - set(['label']))
+        user_ai = list(filter(lambda x:'user_a1' in x or 'user_a2' in x or 'user_a3' in x, list(combi.columns)))
 
-    bst = xgb.Booster({'nthread':4})
-    bst.load_model(model_path)
-    y_valid_score = bst.predict(d_valid)
-    y_valid_pred = np.int32(y_valid_score > threshold)
+        features = list(set(combi.columns) - set(['label'] + user_ai))
+        X_valid = combi[features]
+        y_valid = combi['label']
+        d_valid = xgb.DMatrix(strip_id(X_valid), label=y_valid, missing = missing_value)
 
-    if print_cm:
-        cm = confusion_matrix(y_valid, y_valid_pred)
-        print_cm(cm, labels)
+        bst = xgb.Booster({'nthread':4})
+        bst.load_model(model_path)
+        y_valid_score = bst.predict(d_valid)
+        y_valid_pred = np.int32(y_valid_score > threshold)
 
-    score, F11, F12 = report(X_valid, y_valid, y_valid_pred, print_score=False)
-    print('%s\t%.4f\t%.4f\t%.4f' % (d1, score, F11, F12))
+        if print_cm:
+            cm = confusion_matrix(y_valid, y_valid_pred)
+            print_cm(cm, labels)
+
+        score, F11, F12 = report(X_valid, y_valid, y_valid_pred, print_score=False)
+        print('%s\t%.4f\t%.4f\t%.4f' % (d1, score, F11, F12))
 
 
 # for d1 in range(201, 205):
 #     bst = train('2016%04d' % d1)
+# validate(['2016%04d' % i for i in range(d1+5, d1+8)])
 
-#     print('validate\tscore\tF11\tF12')
-#     for i in range(d1+5, d1+8):
-#         validate('2016%04d' % i)
+bst = train('20160201')
+validate(['20160206'])
 
-bst = train('20160313')
-make_submission('20160318', 'data/output/submission_v1.csv')
+# bst = train('20160301')
+# validate(['20160306'])
+# make_submission('20160318', submission_path)
 
 
 # plt.style.use('ggplot') 

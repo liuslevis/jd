@@ -1,4 +1,5 @@
 library(randomForest)
+combi <- read.csv('data/input/v1/train_20160201_20160229_20160301_20160305.csv', colClasses=c('factor','numeric','numeric',rep('numeric', 6), rep('factor',30)))
 combi <- read.csv('data/input/train_20160201_20160229_20160301_20160305.csv', colClasses=c('factor','numeric','numeric',rep('numeric', 6), rep('factor',40)))
 summary(combi)
 
@@ -110,3 +111,114 @@ action
  5:  29030   7      :1126849   885    : 490275
  6:6690425   9      : 888435   545    : 468920
              (Other): 231462   (Other):6621300
+
+> summary(combi) #new
+> summary(combi)
+ label        user_id           sku_id           act_1
+ 0:51129   Min.   :200002   Min.   :    95   Min.   :  0.000
+ 1:  599   1st Qu.:227751   1st Qu.: 39253   1st Qu.:  2.000
+           Median :253112   Median : 78694   Median :  2.000
+           Mean   :253338   Mean   : 83042   Mean   :  5.413
+           3rd Qu.:279202   3rd Qu.:128988   3rd Qu.:  6.000
+           Max.   :305321   Max.   :171182   Max.   :408.000
+     act_2             act_3              act_4             act_5
+ Min.   : 0.0000   Min.   : 0.00000   Min.   :0.00000   Min.   :0.00000
+ 1st Qu.: 0.0000   1st Qu.: 0.00000   1st Qu.:0.00000   1st Qu.:0.00000
+ Median : 0.0000   Median : 0.00000   Median :0.00000   Median :0.00000
+ Mean   : 0.2406   Mean   : 0.06018   Mean   :0.02987   Mean   :0.04578
+ 3rd Qu.: 0.0000   3rd Qu.: 0.00000   3rd Qu.:0.00000   3rd Qu.:0.00000
+ Max.   :32.0000   Max.   :27.00000   Max.   :3.00000   Max.   :5.00000
+     act_6         user_sex_.1 user_sex_0 user_sex_1 user_sex_2 user_age_.1
+ Min.   :  0.000   0:51727     0:29433    0:47851    0:26173    0:45021
+ 1st Qu.:  2.000   1:    1     1:22295    1: 3877    1:25555    1: 6707
+ Median :  4.000
+ Mean   :  7.811
+ 3rd Qu.:  8.000
+ Max.   :411.000
+ user_age_1 user_age_2 user_age_3 user_age_4 user_age_5 user_age_6 user_lv_cd_1
+ 0:51724    0:47396    0:28166    0:37120    0:50130    0:50811    0:50674
+ 1:    4    1: 4332    1:23562    1:14608    1: 1598    1:  917    1: 1054
+
+ user_lv_cd_2 user_lv_cd_3 user_lv_cd_4 user_lv_cd_5 user_reg_tm_0
+ 0:47687      0:40604      0:35592      0:32355      0:51720
+ 1: 4041      1:11124      1:16136      1:19373      1:    8
+
+ user_reg_tm_1 user_reg_tm_2 user_reg_tm_3 user_reg_tm_4 user_reg_tm_5
+ 0:50732       0:46376       0:46837       0:43128       0:19847
+ 1:  996       1: 5352       1: 4891       1: 8600       1:31881
+
+ sku_a1_.1 sku_a1_1  sku_a1_2  sku_a1_3  sku_a2_.1 sku_a2_1  sku_a2_2
+ 0:50831   0:28612   0:49597   0:26144   0:49244   0:16696   0:37516
+ 1:  897   1:23116   1: 2131   1:25584   1: 2484   1:35032   1:14212
+
+ sku_a3_.1 sku_a3_1  sku_a3_2  user_a1_.1 user_a1_1 user_a1_2 user_a1_3
+ 0:47259   0:30724   0:25473   0:50831    0:28612   0:49597   0:26144
+ 1: 4469   1:21004   1:26255   1:  897    1:23116   1: 2131   1:25584
+
+ user_a2_.1 user_a2_1 user_a2_2 user_a3_.1 user_a3_1   user_a3_2
+ 0:49244    0:16696   0:37516   0:47259    0:30724   Min.   :0.0000
+ 1: 2484    1:35032   1:14212   1: 4469    1:21004   1st Qu.:0.0000
+                                                     Median :1.0000
+                                                     Mean   :0.5076
+                                                     3rd Qu.:1.0000
+                                                     Max.   :1.0000
+
+> combi <- read.csv('data/input/v1/train_20160201_20160229_20160301_20160305.csv', colClasses=c('factor','numeric','numeric',rep('numeric', 6), rep('factor',30)))
+> summary(combi)
+ label        user_id           sku_id           act_1
+ 0:50730   Min.   :200002   Min.   :    95   Min.   :  0.000
+ 1:  998   1st Qu.:227751   1st Qu.: 39253   1st Qu.:  2.000
+           Median :253112   Median : 78694   Median :  2.000
+           Mean   :253338   Mean   : 83048   Mean   :  5.403
+           3rd Qu.:279202   3rd Qu.:128988   3rd Qu.:  6.000
+           Max.   :305321   Max.   :171182   Max.   :408.000
+     act_2             act_3              act_4             act_5
+ Min.   : 0.0000   Min.   : 0.00000   Min.   :0.00000   Min.   :0.00000
+ 1st Qu.: 0.0000   1st Qu.: 0.00000   1st Qu.:0.00000   1st Qu.:0.00000
+ Median : 0.0000   Median : 0.00000   Median :0.00000   Median :0.00000
+ Mean   : 0.2396   Mean   : 0.05979   Mean   :0.02987   Mean   :0.04599
+ 3rd Qu.: 0.0000   3rd Qu.: 0.00000   3rd Qu.:0.00000   3rd Qu.:0.00000
+ Max.   :32.0000   Max.   :27.00000   Max.   :3.00000   Max.   :5.00000
+     act_6         user_sex_.2147483648 user_sex_0 user_sex_1 user_sex_2
+ Min.   :  0.000   0:51727              0:29433    0:47851    0:26173
+ 1st Qu.:  2.000   1:    1              1:22295    1: 3877    1:25555
+ Median :  4.000
+ Mean   :  7.801
+ 3rd Qu.:  8.000
+ Max.   :411.000
+ user_age_.1 user_age_0 user_age_1 user_age_2 user_age_3 user_age_4 user_age_5
+ 0:51727     0:45022    0:51724    0:47396    0:28166    0:37120    0:50130
+ 1:    1     1: 6706    1:    4    1: 4332    1:23562    1:14608    1: 1598
+
+
+
+
+ user_age_6 user_lv_cd_1 user_lv_cd_2 user_lv_cd_3 user_lv_cd_4 user_lv_cd_5
+ 0:50811    0:50674      0:47687      0:40604      0:35592      0:32355
+ 1:  917    1: 1054      1: 4041      1:11124      1:16136      1:19373
+
+
+
+
+ user_reg_tm_0 user_reg_tm_1 user_reg_tm_2 user_reg_tm_3 user_reg_tm_4
+ 0:51720       0:50732       0:46376       0:46837       0:43128
+ 1:    8       1:  996       1: 5352       1: 4891       1: 8600
+
+
+
+
+ user_reg_tm_5 sku_a1_.1 sku_a1_1  sku_a1_2  sku_a1_3  sku_a2_.1 sku_a2_1
+ 0:19847       0:50832   0:28598   0:49603   0:26151   0:49238   0:16688
+ 1:31881       1:  896   1:23130   1: 2125   1:25577   1: 2490   1:35040
+
+
+
+
+ sku_a2_2  sku_a3_.1    sku_a3_1         sku_a3_2
+ 0:37530   0:47269   Min.   :0.0000   Min.   :0.0000
+ 1:14198   1: 4459   1st Qu.:0.0000   1st Qu.:0.0000
+                     Median :0.0000   Median :1.0000
+                     Mean   :0.4061   Mean   :0.5077
+                     3rd Qu.:1.0000   3rd Qu.:1.0000
+                     Max.   :1.0000   Max.   :1.0000
+>
