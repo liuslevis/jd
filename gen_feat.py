@@ -23,6 +23,10 @@ ACTION_TYPES = 6
 
 comment_date = ['20160201', '20160208', '20160215', '20160222', '20160229', '20160307', '20160314', '20160321', '20160328', '20160404', '20160411', '20160415']
 
+brands_li = [3,13,14,24,25,30,48,49,51,70,76,83,88,90,91,101,116,124,127,159,174,180,197,200,209,211,214,225,227,244,249,263,283,285,291,299,306,318,321,324,328,331,336,354,355,370,375,383,403,404,427,438,453,479,484,489,499,515,541,545,554,556,561,562,571,574,594,596,599,605,622,623,635,655,658,665,673,674,677,693,717,739,752,759,766,772,790,800,801,804,812,837,855,857,871,875,885,900,905,907,916,922,]
+brands = {brand : brands_li.index(brand) for brand in brands_li}
+user_brand_cols = ['user_brand_%d' % i for i in range(len(brands))]
+
 def ndays_after(ndays, date_str):
     return datetime.strftime(datetime.strptime(date_str, '%Y%m%d') + timedelta(days=ndays), '%Y%m%d')
 
@@ -167,20 +171,21 @@ def make_train_data(d1, d2, d3, d4):
 
     user_len = len(user_set)
     product_len = len(sku_set)
+    brand_len = len(brands)
 
     user_item_train = {} # {i:j}
     user_item_label = np.zeros((user_len, product_len)) # M[user_index][item_index] = label
     user_item_action_ = np.zeros((ACTION_TYPES+1, user_len, product_len)) # M[type][user_index][item_index] = sum
 
-    user_ai_ = None #M[a_i][user_index][item_index]
-    user_ai_pos = np.zeros((3+1, user_len, product_len))
-    user_ai_neg = np.zeros((3+1, user_len, product_len))
-
-
+    user_ai_ = None #M[a_i][user_index]
+    user_ai_pos = np.ones((3+1, user_len), dtype=np.int32)
+    user_ai_neg = np.ones((3+1, user_len), dtype=np.int32)
 
     user_cat8     = None
-    user_cat8_pos = np.ones((user_len), dtype=np.float64)
-    user_cat8_neg = np.ones((user_len), dtype=np.float64)
+    user_cat8_pos = np.ones((user_len), dtype=np.int32)
+    user_cat8_neg = np.ones((user_len), dtype=np.int32)
+
+    user_brand_ = np.ones((brand_len, user_len), dtype=np.int32)
 
     dates = list(set(map(lambda d:d[:-2], [d1, d2, d3, d4])))
     for date in dates:
@@ -207,11 +212,12 @@ def make_train_data(d1, d2, d3, d4):
                         user_item_train.update({i:j})
 
                         # user_a1 2 3
-                        for k in [1,2,3]:
-                            if product['index'][j]['a'+str(k)] > -1:
-                                user_ai_pos[k][i][j] += 1 
+                        for k in range(1,4):
+                            ai = 'a%d' % k
+                            if product['index'][j][ai] > -1:
+                                user_ai_pos[k][i] += 1 
                             else:
-                                user_ai_neg[k][i][j] += 1
+                                user_ai_neg[k][i] += 1
 
                         # user_cat8
                         if cate == 8:
@@ -219,43 +225,48 @@ def make_train_data(d1, d2, d3, d4):
                         else:
                             user_cat8_neg[i] += 1
 
+                        # user_brand
+                        k = brands[brand]
+                        user_brand_[k][i] += 1
+
                     # label d3~d4
                     if d3 <= date <= d4 and type_ == 4:
                         user_item_label[i][j] = 1
                         user_item_train.update({i:j})
 
                     
-    user_cat8 = user_cat8_pos / (user_cat8_pos + user_cat8_neg)
-    user_ai_ = user_ai_pos / (user_ai_pos + user_ai_neg)
-        
+    user_cat8 = np.float64(user_cat8_pos / (user_cat8_pos + user_cat8_neg))
+    user_ai_  = np.float64(user_ai_pos   / (user_ai_pos + user_ai_neg))
+    user_brand_ = user_brand_ / user_brand_.sum(axis=0) # normalize
+
     columns = [
-        'label',
-        'user_id',
-        'sku_id',
-        'act_1',
-        'act_2',
-        'act_3',
-        'act_4',
-        'act_5',
-        'act_6',
+            'label',
+            'user_id',
+            'sku_id',
+            'act_1',
+            'act_2',
+            'act_3',
+            'act_4',
+            'act_5',
+            'act_6',
 
-        'user_sex',
-        'user_age',
-        'user_lv_cd',
-        'user_reg_tm',
+            'user_sex',
+            'user_age',
+            'user_lv_cd',
+            'user_reg_tm',
 
-        'sku_a1',
-        'sku_a2',
-        'sku_a3',
-        'sku_cate',
-        'sku_brand',
+            'sku_a1',
+            'sku_a2',
+            'sku_a3',
+            'sku_cate',
+            'sku_brand',
 
-        'user_a1',
-        'user_a2',
-        'user_a3',
+            'user_a1',
+            'user_a2',
+            'user_a3',
+            'user_cat8', #0~1
+        ] + user_brand_cols # user_brand_[1] = 0.x
 
-        'user_cat8', #0~1
-        ]
     table = []
     for i, j in user_item_train.items():
         user_id = np.int32(user['index'][i]['user_id'])
@@ -264,16 +275,11 @@ def make_train_data(d1, d2, d3, d4):
         table.append([
             np.int32(user_item_label[i][j]),
             np.int32(user_id),
-            np.int32(sku_id),
-
-            np.int32(user_item_action_[1][i][j]),
-            np.int32(user_item_action_[2][i][j]),
-            np.int32(user_item_action_[3][i][j]),
-            np.int32(user_item_action_[4][i][j]),
-            np.int32(user_item_action_[5][i][j]),
-            np.int32(user_item_action_[6][i][j]),
-
-            np.int32(user['index'][i]['sex']),
+            np.int32(sku_id),]
+            +
+            [np.int32(user_item_action_[k][i][j]) for k in [1,2,3,4,5,6]]
+            +
+            [np.int32(user['index'][i]['sex']),
             np.int32(user['index'][i]['age']),
             np.int32(user['index'][i]['user_lv_cd']),
             np.int32(user['index'][i]['user_reg_tm']),
@@ -282,21 +288,20 @@ def make_train_data(d1, d2, d3, d4):
             np.int32(product['index'][j]['a2']),
             np.int32(product['index'][j]['a3']),
             np.int32(product['index'][j]['cate']),
-            np.int32(product['index'][j]['brand']),
-
-            np.int32(user_ai_[1][i][j]),
-            np.int32(user_ai_[2][i][j]),
-            np.int32(user_ai_[3][i][j]),
-
-            np.float64(user_cat8[i]),
-            ])
+            np.int32(product['index'][j]['brand']),]
+            +
+            [np.int32(user_ai_[k][i]) for k in [1,2,3]]
+            +
+            [np.float64(user_cat8[i]),] 
+            + 
+            [user_brand_[k][i] for k in range(len(brands))]) 
 
     df = pd.DataFrame(table, columns=columns)
     feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age', 'user_lv_cd', 'user_reg_tm', 'sku_a1', 'sku_a2', 'sku_a3', 'user_a1', 'user_a2', 'user_a3']]
-    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6', 'user_cat8']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6], feats[7], feats[8], feats[9]], axis=1)
+    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6', 'user_cat8'] + user_brand_cols], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6], feats[7], feats[8], feats[9]], axis=1)
 
     path = train_path % (d1, d2, d3, d4)
-    df.to_csv(path, index=False)
+    df.to_csv(path, index=False, float_format='%.6f')
     print(path)
 
 if __name__ == '__main__':

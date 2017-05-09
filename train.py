@@ -182,34 +182,17 @@ def validate(d1_li, print_cm=False):
 # bst = train('20160201')
 # validate(['20160206'])
 
-bst = train('20160313')
-validate(['20160318'])
-
+bst = train('20160202')
+validate(['20160207'])
 
 # bst = train('20160313')
-# validate(['20160401'])
 # make_submission('20160318', submission_path)
-
 
 # plt.style.use('ggplot') 
 # xgb.plot_importance(bst) 
 # xgb.plot_tree(bst, num_trees=1) 
 # xgb.to_graphviz(bst, num_trees=1)
 # plt.show()
-
-# Validating Data
-# df1 = read_input_data('20160318', 'data/input/v1/train_%s_%s_%s_%s.csv')
-# df2 = read_input_data('20160318', 'data/input/train_%s_%s_%s_%s.csv')
-# common_cols = set(df1.columns).intersection(set(df2.columns)) - set(['user_age_-1'])
-# for user_id in set(df1['user_id']).union(set(df2['user_id'])):
-#     for col in common_cols:
-#         v1 = df1.loc[df1['user_id']==user_id][col].values[0]
-#         v2 = df2.loc[df1['user_id']==user_id][col].values[0]
-#         if v1 != v2:
-#             print('diff col:%s user_id:%d values:(%s, %s)' % (col, user_id, v1, v2))
-#         elif v1 == v2:
-            # pass
-            # print('same col:%s user_id:%d values:(%s, %s)' % (col, user_id, v1, v2))
 
 if __name__ == '__main__':
     pass
