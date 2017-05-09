@@ -15,9 +15,12 @@ ignore_feats = [
     # 'user_a1', 
     # 'user_a2', 
     # 'user_a3',
+    # 'user_cat8'
+    # 'user_sex_-2147483648',
+    # 'user_sex_-1',
     ]
 
-def get_feat(df, ignore_feats):
+def strip_feats(df, ignore_feats):
     ignores = []
     for prefix in ignore_feats:
         for col in df.columns:
@@ -39,7 +42,7 @@ def train(d1, print_cm=False):
     print('\ntrain')
     print(d1)
     combi = read_input_data(d1)
-    features = get_feat(combi, ignore_feats)
+    features = strip_feats(combi, ignore_feats)
     combi_true = combi[combi['label']==1]
     combi_false = combi[combi['label']==0]
     combi = pd.concat([combi_true, combi_false[:len(combi_true)]])
@@ -126,7 +129,7 @@ def report(X, y, y_pred, print_score=False):
 
 def make_submission(d1, submission_path):
     combi = read_input_data(d1)
-    features = get_feat(combi, ignore_feats)
+    features = strip_feats(combi, ignore_feats)
     X = combi[features]
     y = combi['label']
     data = xgb.DMatrix(strip_id(X), label=y, missing = missing_value)
@@ -154,7 +157,7 @@ def validate(d1_li, print_cm=False):
     print('validate\tscore\tF11\tF12')
     for d1 in d1_li:
         combi = read_input_data(d1)
-        features = get_feat(combi, ignore_feats)
+        features = strip_feats(combi, ignore_feats)
         X_valid = combi[features]
         y_valid = combi['label']
         d_valid = xgb.DMatrix(strip_id(X_valid), label=y_valid, missing = missing_value)
@@ -176,12 +179,15 @@ def validate(d1_li, print_cm=False):
 #     bst = train('2016%04d' % d1)
 # validate(['2016%04d' % i for i in range(d1+5, d1+8)])
 
-bst = train('20160201')
-validate(['20160206'])
+# bst = train('20160201')
+# validate(['20160206'])
 
-# bst = train('20160327')
+bst = train('20160313')
+validate(['20160318'])
+
+
+# bst = train('20160313')
 # validate(['20160401'])
-
 # make_submission('20160318', submission_path)
 
 
@@ -190,6 +196,20 @@ validate(['20160206'])
 # xgb.plot_tree(bst, num_trees=1) 
 # xgb.to_graphviz(bst, num_trees=1)
 # plt.show()
+
+# Validating Data
+# df1 = read_input_data('20160318', 'data/input/v1/train_%s_%s_%s_%s.csv')
+# df2 = read_input_data('20160318', 'data/input/train_%s_%s_%s_%s.csv')
+# common_cols = set(df1.columns).intersection(set(df2.columns)) - set(['user_age_-1'])
+# for user_id in set(df1['user_id']).union(set(df2['user_id'])):
+#     for col in common_cols:
+#         v1 = df1.loc[df1['user_id']==user_id][col].values[0]
+#         v2 = df2.loc[df1['user_id']==user_id][col].values[0]
+#         if v1 != v2:
+#             print('diff col:%s user_id:%d values:(%s, %s)' % (col, user_id, v1, v2))
+#         elif v1 == v2:
+            # pass
+            # print('same col:%s user_id:%d values:(%s, %s)' % (col, user_id, v1, v2))
 
 if __name__ == '__main__':
     pass

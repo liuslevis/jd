@@ -9,7 +9,7 @@ import os,sys
 import math
 import numpy as np
 
-train_days = 14 # 28
+train_days = 28 # 14
 label_days = 4
 
 action_paths = './data/raw/JData_Action_%s.csv' 
@@ -68,7 +68,7 @@ def convert_age(age_str):
     elif age_str == '56岁以上':
         return 6
     else:
-        return -1
+        return -2
 
 def convert_reg_tm(reg_tm):
     if reg_tm < -1:
@@ -169,9 +169,18 @@ def make_train_data(d1, d2, d3, d4):
     product_len = len(sku_set)
 
     user_item_train = {} # {i:j}
-    user_item_label = np.zeros((user_len, product_len)) # M[i=user][j=item] = label
-    user_item_action_ = np.zeros((ACTION_TYPES+1, user_len, product_len)) # M[type][i=user][j=item] = sum
-    user_a_ = np.zeros((4, user_len, product_len)) #M[a_2][i=user][j=item]
+    user_item_label = np.zeros((user_len, product_len)) # M[user_index][item_index] = label
+    user_item_action_ = np.zeros((ACTION_TYPES+1, user_len, product_len)) # M[type][user_index][item_index] = sum
+
+    user_ai_ = None #M[a_i][user_index][item_index]
+    user_ai_pos = np.zeros((3+1, user_len, product_len))
+    user_ai_neg = np.zeros((3+1, user_len, product_len))
+
+
+
+    user_cat8     = None
+    user_cat8_pos = np.ones((user_len), dtype=np.float64)
+    user_cat8_neg = np.ones((user_len), dtype=np.float64)
 
     dates = list(set(map(lambda d:d[:-2], [d1, d2, d3, d4])))
     for date in dates:
@@ -198,9 +207,17 @@ def make_train_data(d1, d2, d3, d4):
                         user_item_train.update({i:j})
 
                         # user_a1 2 3
-                        user_a_[1][i][j] = product['index'][j]['a1']
-                        user_a_[2][i][j] = product['index'][j]['a2']
-                        user_a_[3][i][j] = product['index'][j]['a3']
+                        for k in [1,2,3]:
+                            if product['index'][j]['a%d' % i] > -1:
+                                user_ai_pos[k][i][j] += 1 
+                            else:
+                                user_ai_neg[k][i][j] += 1
+
+                        # user_cat8
+                        if cate == 8:
+                            user_cat8_pos[i] += 1
+                        else:
+                            user_cat8_neg[i] += 1
 
                     # label d3~d4
                     if d3 <= date <= d4 and type_ == 4:
@@ -234,7 +251,12 @@ def make_train_data(d1, d2, d3, d4):
         'user_a1',
         'user_a2',
         'user_a3',
+
+        'user_cat8', #0~1
         ]
+
+    user_cat8 = user_cat8_pos / (user_cat8_pos + user_cat8_neg)
+    user_ai_ = user_ai_pos / (user_ai_pos + user_ai_neg)
 
     table = []
     for i, j in user_item_train.items():
@@ -264,15 +286,16 @@ def make_train_data(d1, d2, d3, d4):
             np.int32(product['index'][j]['cate']),
             np.int32(product['index'][j]['brand']),
 
-            np.int(user_a_[1][i][j]),
-            np.int(user_a_[2][i][j]),
-            np.int(user_a_[3][i][j]),
+            np.int32(user_ai_[1][i][j]),
+            np.int32(user_ai_[2][i][j]),
+            np.int32(user_ai_[3][i][j]),
 
+            np.float64(user_cat8[i]),
             ])
 
     df = pd.DataFrame(table, columns=columns)
     feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age', 'user_lv_cd', 'user_reg_tm', 'sku_a1', 'sku_a2', 'sku_a3', 'user_a1', 'user_a2', 'user_a3']]
-    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6], feats[7], feats[8], feats[9]], axis=1)
+    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6', 'user_cat8']], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6], feats[7], feats[8], feats[9]], axis=1)
 
     path = train_path % (d1, d2, d3, d4)
     df.to_csv(path, index=False)
@@ -281,8 +304,13 @@ def make_train_data(d1, d2, d3, d4):
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print('usage:')
+        print('\t28')
         print('\tipython3 gen_feat.py 20160313')
         print('\tipython3 gen_feat.py 20160318')
+        print('\t14')
+        print('\tipython3 gen_feat.py 20160327')
+        print('\tipython3 gen_feat.py 20160401')
+        
     else:
         # d1 ~ d2 训练数据 d3 ~ d4标签
         d1 = sys.argv[1]
