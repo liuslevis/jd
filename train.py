@@ -175,15 +175,14 @@ def validate(d1_li, print_cm=False):
         print('%s\t%.4f\t%.4f\t%.4f' % (d1, score, F11, F12))
 
 
-# for d1 in range(201, 205):
-#     bst = train('2016%04d' % d1)
-# validate(['2016%04d' % i for i in range(d1+5, d1+8)])
-
 # bst = train('20160201')
-# validate(['20160206'])
+# validate(['20160206', '20160207', '20160208'])
 
-bst = train('20160202')
-validate(['20160207'])
+# bst = train('20160202')
+# validate(['20160206', '20160207', '20160208'])
+
+bst = train('20160203')
+validate(['20160206', '20160207', '20160208', '20160313'])
 
 # bst = train('20160313')
 # make_submission('20160318', submission_path)
