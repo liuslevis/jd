@@ -208,7 +208,7 @@ def make_train_data(d1, d2, d3, d4):
 
                         # user_a1 2 3
                         for k in [1,2,3]:
-                            if product['index'][j]['a%d' % i] > -1:
+                            if product['index'][j]['a'+str(k)] > -1:
                                 user_ai_pos[k][i][j] += 1 
                             else:
                                 user_ai_neg[k][i][j] += 1
@@ -225,7 +225,9 @@ def make_train_data(d1, d2, d3, d4):
                         user_item_train.update({i:j})
 
                     
-                    
+    user_cat8 = user_cat8_pos / (user_cat8_pos + user_cat8_neg)
+    user_ai_ = user_ai_pos / (user_ai_pos + user_ai_neg)
+        
     columns = [
         'label',
         'user_id',
@@ -254,10 +256,6 @@ def make_train_data(d1, d2, d3, d4):
 
         'user_cat8', #0~1
         ]
-
-    user_cat8 = user_cat8_pos / (user_cat8_pos + user_cat8_neg)
-    user_ai_ = user_ai_pos / (user_ai_pos + user_ai_neg)
-
     table = []
     for i, j in user_item_train.items():
         user_id = np.int32(user['index'][i]['user_id'])
