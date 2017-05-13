@@ -38,10 +38,10 @@ def read_input_data(d1):
     d4 = ndays_after(label_days, d3)
     return pd.read_csv(train_path % (d1, d2, d3, d4))
 
-def train(d1, print_cm=False):
+def train(d1_li, print_cm=False):
     print('\ntrain')
-    print(d1)
-    combi = read_input_data(d1)
+    print(d1_li)
+    combi = pd.concat([read_input_data(d1) for d1 in d1_li])
     features = strip_feats(combi, ignore_feats)
     combi_true = combi[combi['label']==1]
     combi_false = combi[combi['label']==0]
@@ -49,6 +49,8 @@ def train(d1, print_cm=False):
     X_combi = combi[features]
     y_combi = combi['label']
     X_train, X_test, y_train, y_test = train_test_split(X_combi, y_combi, test_size=0.5, random_state=0)
+
+    print('samples: %d/%d' % (len(y_train), len(y_test)))
 
     d_train = xgb.DMatrix(strip_id(X_train), label=y_train, missing = missing_value)
     d_test = xgb.DMatrix(strip_id(X_test), label=y_test, missing = missing_value)
@@ -175,16 +177,11 @@ def validate(d1_li, print_cm=False):
         print('%s\t%.4f\t%.4f\t%.4f' % (d1, score, F11, F12))
 
 
-# bst = train('20160201')
-# validate(['20160206', '20160207', '20160208'])
 
-# bst = train('20160202')
-# validate(['20160206', '20160207', '20160208'])
+bst = train(['201602%02d' % i for i in range(1,10)])
+validate(['201602%02d' % i for i in range(10,15)])
 
-bst = train('20160203')
-validate(['20160206', '20160207', '20160208', '20160313'])
-
-# bst = train('20160313')
+# bst = train(['201602%02d' % i  for i in [13]])
 # make_submission('20160318', submission_path)
 
 # plt.style.use('ggplot') 

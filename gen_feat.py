@@ -8,6 +8,7 @@ import pickle
 import os,sys
 import math
 import numpy as np
+from itertools import combinations, permutations
 
 train_days = 28 # 14
 label_days = 4
@@ -26,6 +27,14 @@ comment_date = ['20160201', '20160208', '20160215', '20160222', '20160229', '201
 brands_li = [3,13,14,24,25,30,48,49,51,70,76,83,88,90,91,101,116,124,127,159,174,180,197,200,209,211,214,225,227,244,249,263,283,285,291,299,306,318,321,324,328,331,336,354,355,370,375,383,403,404,427,438,453,479,484,489,499,515,541,545,554,556,561,562,571,574,594,596,599,605,622,623,635,655,658,665,673,674,677,693,717,739,752,759,766,772,790,800,801,804,812,837,855,857,871,875,885,900,905,907,916,922,]
 brands = {brand : brands_li.index(brand) for brand in brands_li}
 user_brand_cols = ['user_brand_%d' % i for i in range(len(brands))]
+
+def recent_comment_date(date, comment_date=comment_date):
+    for each in comment_date:
+        if each < date:
+            continue
+        else:
+            return each
+    return comment_date[0]
 
 def ndays_after(ndays, date_str):
     return datetime.strftime(datetime.strptime(date_str, '%Y%m%d') + timedelta(days=ndays), '%Y%m%d')
@@ -89,58 +98,76 @@ def convert_reg_tm(reg_tm):
         return 5
 
 def get_user_df(d1, d2, d3, d4):
+    return pd.read_csv(user_path)
+
+def get_product_df():
+    return pd.read_csv(product_path)
+
+def get_comment_df():
+    return pd.read_csv(comment_path)
+
+def get_user(d1, d2, d3, d4):    
     cache_path = './cache/user_%s.pkl' % (d4)
     if os.path.exists(cache_path) and USE_CACHE:
         return pickle.load(open(cache_path, 'rb'))
     else:
-        df = pd.read_csv(user_path)
+        df = get_user_df(d1, d2, d3, d4)        
         df['age'] = df['age'].map(convert_age)
         df['sex'] = df['sex'].fillna(-1)
         df['user_reg_tm'] = df['user_reg_tm']\
             .map(lambda reg_tm : (strptime(d4) - strptime(reg_tm)).days if type(reg_tm) is str else -1)\
             .map(convert_reg_tm)
-        pickle.dump(df, open(cache_path, 'wb'))
-        return df
+        dict1 = {}
+        dict2 = {}
+        for index, row in df.iterrows():
+            user_id = df.ix[index, 'user_id']
+            info = {col:df.ix[index, col] for col in df.columns}
+            info.update({'index':index})
+            dict1.update({user_id:info})
+            dict2.update({index:info})
+        ret = {}
+        ret.update({'user_id':dict1})
+        ret.update({'index':dict2})
+        pickle.dump(ret, open(cache_path, 'wb'))
+        return ret
 
-def get_user(d1, d2, d3, d4):
-    df = get_user_df(d1, d2, d3, d4)
-    dict1 = {}
-    dict2 = {}
-    for index, row in df.iterrows():
-        user_id = df.ix[index, 'user_id']
-        info = {col:df.ix[index, col] for col in df.columns}
-        info.update({'index':index})
-        dict1.update({user_id:info})
-        dict2.update({index:info})
-    ret = {}
-    ret.update({'user_id':dict1})
-    ret.update({'index':dict2})
-    return ret
-
-def get_product_df():
+#{'sku_id':{sku_id:info}, 'index':{index:info}}
+def get_product():
     cache_path = './cache/product.pkl'
     if os.path.exists(cache_path) and USE_CACHE:
         return pickle.load(open(cache_path, 'rb'))
     else:
-        df = pd.read_csv(product_path)
-        pickle.dump(df, open(cache_path, 'wb'))
-        return df
+        df = get_product_df()
+        dict1 = {}
+        dict2 = {}
+        for index, row in df.iterrows():
+            sku_id = df.ix[index,'sku_id']
+            info = {col:df.ix[index, col] for col in df.columns}
+            info.update({'index':index})
+            dict1.update({sku_id:info})
+            dict2.update({index:info})
+        ret = {}
+        ret.update({'sku_id':dict1})
+        ret.update({'index':dict2})
+        pickle.dump(ret, open(cache_path, 'wb'))
+        return ret
 
-#{'sku_id':{sku_id:info}, 'index':{index:info}}
-def get_product():
-    df = get_product_df()
-    dict1 = {}
-    dict2 = {}
-    for index, row in df.iterrows():
-        sku_id = df.ix[index,'sku_id']
-        info = {col:df.ix[index, col] for col in df.columns}
-        info.update({'index':index})
-        dict1.update({sku_id:info})
-        dict2.update({index:info})
-    ret = {}
-    ret.update({'sku_id':dict1})
-    ret.update({'index':dict2})
-    return ret
+# {sku_id:{'20160201':{comment_num:x,has_bad_comment:x,bad_comment_rate:x}}}
+def get_comment():
+    cache_path = './cache/comment.pkl'
+    if os.path.exists(cache_path) and USE_CACHE:
+        return pickle.load(open(cache_path, 'rb'))
+    else:
+        df = get_comment_df()
+        cols = ['comment_num', 'has_bad_comment', 'bad_comment_rate']
+        ret = {}
+        for index, row in df.iterrows():
+            sku_id = df.ix[index, 'sku_id']
+            date = df.ix[index, 'dt'].replace('-', '')
+            info = {col:df.ix[index, col] for col in cols}
+            ret.update({sku_id:{date:info}})
+        pickle.dump(ret, open(cache_path, 'wb'))
+        return ret
 
 def inv_dict(d):
     return dict((v,k) for k,v in d.items())
@@ -165,6 +192,7 @@ def parse_action_line(line):
 def make_train_data(d1, d2, d3, d4):
     user = get_user(d1, d2, d3, d4)
     product = get_product()
+    comment = get_comment()
 
     user_set = set(user['user_id'].keys())
     sku_set = set(product['sku_id'].keys())
@@ -187,6 +215,10 @@ def make_train_data(d1, d2, d3, d4):
 
     user_brand_ = np.ones((brand_len, user_len), dtype=np.int32)
 
+    # user_sku_comment_num = np.ones()
+    # user_sku_has_bad_comment = 
+    # user_sku_comment_rate = 
+
     dates = list(set(map(lambda d:d[:-2], [d1, d2, d3, d4])))
     for date in dates:
         with open(action_paths % date) as f:
@@ -208,6 +240,7 @@ def make_train_data(d1, d2, d3, d4):
                     if d1 <= date <= d2 and 1 <= type_ <= 6:
                         if type_ >= user_item_action_.shape[0] or i >= user_item_action_.shape[1] or j >= user_item_action_.shape[2]:
                             print('debug', user_item_action_.shape, type_, i, j)
+
                         user_item_action_[type_][i][j] += 1
                         user_item_train.update({i:j})
 
@@ -239,6 +272,8 @@ def make_train_data(d1, d2, d3, d4):
     user_ai_  = np.float64(user_ai_pos   / (user_ai_pos + user_ai_neg))
     user_brand_ = user_brand_ / user_brand_.sum(axis=0) # normalize
 
+    comment_date = '20160201'
+
     columns = [
             'label',
             'user_id',
@@ -261,6 +296,10 @@ def make_train_data(d1, d2, d3, d4):
             'sku_cate',
             'sku_brand',
 
+            'sku_comment_num',
+            'sku_has_bad_comment',
+            'sku_bad_comment_rate',
+
             'user_a1',
             'user_a2',
             'user_a3',
@@ -271,7 +310,8 @@ def make_train_data(d1, d2, d3, d4):
     for i, j in user_item_train.items():
         user_id = np.int32(user['index'][i]['user_id'])
         sku_id = np.int32(product['index'][j]['sku_id'])
-
+        comment_info = comment[sku_id][comment_date] if sku_id in comment and comment_date in comment[sku_id] else {'comment_num':0, 'has_bad_comment':-1, 'bad_comment_rate':0}
+        
         table.append([
             np.int32(user_item_label[i][j]),
             np.int32(user_id),
@@ -282,13 +322,17 @@ def make_train_data(d1, d2, d3, d4):
             [np.int32(user['index'][i]['sex']),
             np.int32(user['index'][i]['age']),
             np.int32(user['index'][i]['user_lv_cd']),
-            np.int32(user['index'][i]['user_reg_tm']),
-
-            np.int32(product['index'][j]['a1']),
+            np.int32(user['index'][i]['user_reg_tm']),]
+            +
+            [np.int32(product['index'][j]['a1']),
             np.int32(product['index'][j]['a2']),
             np.int32(product['index'][j]['a3']),
             np.int32(product['index'][j]['cate']),
             np.int32(product['index'][j]['brand']),]
+            +
+            [np.int32( comment_info['comment_num']),
+            np.int32(  comment_info['has_bad_comment']),
+            np.float64(comment_info['bad_comment_rate'])]
             +
             [np.int32(user_ai_[k][i]) for k in [1,2,3]]
             +
@@ -297,8 +341,8 @@ def make_train_data(d1, d2, d3, d4):
             [user_brand_[k][i] for k in range(len(brands))]) 
 
     df = pd.DataFrame(table, columns=columns)
-    feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age', 'user_lv_cd', 'user_reg_tm', 'sku_a1', 'sku_a2', 'sku_a3', 'user_a1', 'user_a2', 'user_a3']]
-    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6', 'user_cat8'] + user_brand_cols], feats[0], feats[1], feats[2], feats[3], feats[4], feats[5], feats[6], feats[7], feats[8], feats[9]], axis=1)
+    dummy_feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age']]
+    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6', 'user_lv_cd', 'user_reg_tm', 'user_a1', 'user_a2', 'user_a3', 'user_cat8', 'sku_a1', 'sku_a2', 'sku_a3','sku_comment_num', 'sku_has_bad_comment', 'sku_bad_comment_rate'] + user_brand_cols]] + dummy_feats, axis=1)
 
     path = train_path % (d1, d2, d3, d4)
     df.to_csv(path, index=False, float_format='%.6f')
@@ -308,17 +352,14 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         print('usage:')
         print('\t28')
-        print('\tipython3 gen_feat.py 20160313')
-        print('\tipython3 gen_feat.py 20160318')
+        print('\tipython3 gen_feat.py 20160313 20160318')
         print('\t14')
-        print('\tipython3 gen_feat.py 20160327')
-        print('\tipython3 gen_feat.py 20160401')
+        print('\tipython3 gen_feat.py 20160327 20160401')
         
     else:
         # d1 ~ d2 训练数据 d3 ~ d4标签
-        d1 = sys.argv[1]
-        d2 = ndays_after(train_days, d1)
-        d3 = ndays_after(1, d2)
-        d4 = ndays_after(label_days, d3)
-
-        make_train_data(d1, d2, d3, d4)
+        for d1 in sys.argv[1:]:
+            d2 = ndays_after(train_days, d1)
+            d3 = ndays_after(1, d2)
+            d4 = ndays_after(label_days, d3)
+            make_train_data(d1, d2, d3, d4)
