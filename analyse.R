@@ -1,4 +1,8 @@
 library(randomForest)
+
+action <- read.csv('data/raw/JData_Action_201603.csv', colClasses=c('numeric', 'numeric', 'character', 'factor', 'factor', 'factor', 'factor'))
+
+
 combi <- read.csv('data/input/v1/train_20160201_20160229_20160301_20160305.csv', colClasses=c('factor','numeric','numeric',rep('numeric', 6), rep('factor',30)))
 combi <- read.csv('data/input/train_20160201_20160229_20160301_20160305.csv', colClasses=c('factor','numeric','numeric',rep('numeric', 6), rep('factor',40)))
 summary(combi)

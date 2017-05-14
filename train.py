@@ -2,16 +2,18 @@ from gen_feat import *
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 import xgboost as xgb
-import matplotlib.pyplot as plt 
 
-train_path = 'data/input/train_%s_%s_%s_%s.csv'
+train_path = 'data/input/v2/train_%s_%s_%s_%s.csv'
 model_path = 'data/output/bst.model'
 submission_path = 'data/output/submission.csv'
+
+FALSE_TRUE_SAMPLE_RATE = 16 / 1
 
 threshold = 0.5
 missing_value = -999.0
 labels = ['0', '1']
 ignore_feats = [
+    # 'user_brand'
     # 'user_a1', 
     # 'user_a2', 
     # 'user_a3',
@@ -38,40 +40,14 @@ def read_input_data(d1):
     d4 = ndays_after(label_days, d3)
     return pd.read_csv(train_path % (d1, d2, d3, d4))
 
-def train(d1_li, print_cm=False):
-    print('\ntrain')
-    print(d1_li)
+def read_train_combi(d1_li):
+    print('\ncombi:', ' '.join(d1_li))
     combi = pd.concat([read_input_data(d1) for d1 in d1_li])
-    features = strip_feats(combi, ignore_feats)
     combi_true = combi[combi['label']==1]
     combi_false = combi[combi['label']==0]
-    combi = pd.concat([combi_true, combi_false[:len(combi_true)]])
-    X_combi = combi[features]
-    y_combi = combi['label']
-    X_train, X_test, y_train, y_test = train_test_split(X_combi, y_combi, test_size=0.5, random_state=0)
-
-    print('samples: %d/%d' % (len(y_train), len(y_test)))
-
-    d_train = xgb.DMatrix(strip_id(X_train), label=y_train, missing = missing_value)
-    d_test = xgb.DMatrix(strip_id(X_test), label=y_test, missing = missing_value)
-    params = {
-        'max_depth':2, 
-        'eta':0.05, 
-        'silent':1, 
-        'objective':'binary:logistic', 
-        'nthread':4, 
-        'eval_metric':['auc', 'logloss']
-        }
-    evallist = [(d_test, 'eval'), (d_train, 'train')]
-    num_round = 2
-    bst = xgb.train(params, d_train, num_round, evallist)
-    bst.save_model(model_path)
-    xgb.plot_importance(bst)
-    y_test_pred = np.int32(bst.predict(d_test) > threshold)
-    if print_cm:
-        cm = confusion_matrix(y_test, y_test_pred)
-        print_cm(cm, labels)
-    return bst
+    false_num = int(len(combi_true) * FALSE_TRUE_SAMPLE_RATE)
+    combi = pd.concat([combi_true, combi_false[:false_num]])
+    return combi
 
 # F11,F12,score
 def report(X, y, y_pred, print_score=False):
@@ -176,19 +152,48 @@ def validate(d1_li, print_cm=False):
         score, F11, F12 = report(X_valid, y_valid, y_valid_pred, print_score=False)
         print('%s\t%.4f\t%.4f\t%.4f' % (d1, score, F11, F12))
 
+def train(combi, print_cm=False):
+    print('\ntrain:')
+    features = strip_feats(combi, ignore_feats)
+    X_combi = combi[features]
+    y_combi = combi['label']
+    X_train, X_test, y_train, y_test = train_test_split(X_combi, y_combi, test_size=0.5, random_state=0)
 
+    print('samples: %d/%d' % (len(y_train), len(y_test)))
 
-bst = train(['201602%02d' % i for i in range(1,10)])
-validate(['201602%02d' % i for i in range(10,15)])
+    d_train = xgb.DMatrix(strip_id(X_train), label=y_train, missing = missing_value)
+    d_test = xgb.DMatrix(strip_id(X_test), label=y_test, missing = missing_value)
+    params = {
+        'n_estimators':500,
+        'max_depth':8, 
+        'eta':0.05, 
+        'silent':1, 
+        'objective':'binary:logistic', 
+        'nthread':4, 
+        'eval_metric':['auc', 'logloss']
+        }
+    evallist = [(d_test, 'eval'), (d_train, 'train')]
+    num_round = 2
+    bst = xgb.train(params, d_train, num_round, evallist)
+    bst.save_model(model_path)
+    xgb.plot_importance(bst)
+    y_test_pred = np.int32(bst.predict(d_test) > threshold)
+    if print_cm:
+        cm = confusion_matrix(y_test, y_test_pred)
+        print_cm(cm, labels)
+    return bst
 
-# bst = train(['201602%02d' % i  for i in [13]])
-# make_submission('20160318', submission_path)
+combi = read_train_combi(['20160306','20160311'])
+bst = train(combi)
+validate(['201603%02d' % i for i in range(16,18)])
 
+bst = train(read_train_combi(['20160308','20160313']))
+make_submission('20160318', submission_path)
+
+# import matplotlib.pyplot as plt 
 # plt.style.use('ggplot') 
 # xgb.plot_importance(bst) 
 # xgb.plot_tree(bst, num_trees=1) 
 # xgb.to_graphviz(bst, num_trees=1)
+# plt.savefig('output/xgb.png')  
 # plt.show()
-
-if __name__ == '__main__':
-    pass
