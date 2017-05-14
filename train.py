@@ -183,6 +183,7 @@ def train(combi, print_cm=False):
         print_cm(cm, labels)
     return bst
 
+# combi = read_train_combi(['20160310'])
 combi = read_train_combi(['20160306','20160311'])
 bst = train(combi)
 validate(['201603%02d' % i for i in range(16,18)])
