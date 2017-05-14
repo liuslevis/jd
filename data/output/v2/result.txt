@@ -1,0 +1,9 @@
+combi: 20160306 20160311
+
+train:
+samples: 22754/22755
+[0]    eval-auc:0.899601    eval-logloss:0.648665    train-auc:0.911012    train-logloss:0.648563
+[1]    eval-auc:0.89991    eval-logloss:0.608392    train-auc:0.911352    train-logloss:0.60822
+validate    score    F11    F12
+20160316    0.7177    0.6483    0.7640
+20160317    0.4950    0.4439    0.5291
