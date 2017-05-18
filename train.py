@@ -13,13 +13,9 @@ threshold = 0.5
 missing_value = -999.0
 labels = ['0', '1']
 ignore_feats = [
-    # 'user_brand'
-    # 'user_a1', 
-    # 'user_a2', 
-    # 'user_a3',
-    # 'user_cat8'
-    # 'user_sex_-2147483648',
-    # 'user_sex_-1',
+    'user_brand_',
+    'act_1',
+    'user_cat8',
     ]
 
 def strip_feats(df, ignore_feats):
@@ -160,6 +156,8 @@ def train(combi, print_cm=False):
     X_train, X_test, y_train, y_test = train_test_split(X_combi, y_combi, test_size=0.5, random_state=0)
 
     print('samples: %d/%d' % (len(y_train), len(y_test)))
+    print('ignore feats:', ' '.join(ignore_feats))
+    print('train  feats:', ' '.join(features))
 
     d_train = xgb.DMatrix(strip_id(X_train), label=y_train, missing = missing_value)
     d_test = xgb.DMatrix(strip_id(X_test), label=y_test, missing = missing_value)
@@ -183,11 +181,11 @@ def train(combi, print_cm=False):
         print_cm(cm, labels)
     return bst
 
-combi = read_train_combi(['20160%03d' % i for i in [201]])
+combi = read_train_combi(['2016%04d' % i for i in [201]])
 bst = train(combi)
-validate(['20160%03d' % i for i in [216,221,226,301]] )
+validate(['2016%04d' % i for i in [206, 211, 216]] )
 
-# bst = train(read_train_combi(['20160308','20160313']))
+# bst = train(read_train_combi(['20160201','20160217','20160311']))
 # make_submission('20160318', submission_path)
 
 # import matplotlib.pyplot as plt 

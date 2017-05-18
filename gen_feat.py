@@ -36,7 +36,6 @@ def recent_comment_date(date, comment_date=comment_date):
             return each
     return comment_date[0]
 
-
 def ndays_after(ndays, date_str):
     return datetime.strftime(datetime.strptime(date_str, '%Y%m%d') + timedelta(days=ndays), '%Y%m%d')
 
@@ -256,7 +255,6 @@ def make_train_data(d1, d2, d3, d4):
                     i = user['user_id'][user_id]['index']
                     j = product['sku_id'][sku_id]['index']
                     
-                    month_stage = convert_month_stage(date)
 
                     # train d1~d2
                     if d1 <= date <= d2 and 1 <= type_ <= 6:
@@ -284,9 +282,9 @@ def make_train_data(d1, d2, d3, d4):
                         k = brands[brand]
                         user_brand_[k][i] += 1
 
-                        # if type_==4: TODO
                         # user_buy_month_stage_0~3
-                        user_buy_month_stage_[month_stage][i] += 1
+                        if type_==4:
+                            user_buy_month_stage_[month_stage_between(d1,d2)][i] += 1
 
                     # label d3~d4. !!DONT GET FEAT FROM HERE!!
                     if d3 <= date <= d4 and type_ == 4:
@@ -390,10 +388,7 @@ def make_train_data(d1, d2, d3, d4):
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print('usage:')
-        print('\t28')
-        print('\tipython3 gen_feat.py 20160313 20160318')
-        print('\t14')
-        print('\tipython3 gen_feat.py 20160327 20160401')
+        print('\tipython3 gen_feat.py 20160201 20160206 20160211 20160216 20160221 20160226 20160301 20160306 20160311 20160316 20160318')
         
     else:
         # d1 ~ d2 训练数据 d3 ~ d4标签
