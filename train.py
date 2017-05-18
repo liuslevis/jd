@@ -3,7 +3,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 import xgboost as xgb
 
-train_path = 'data/input/v2/train_%s_%s_%s_%s.csv'
+train_path = 'data/input/train_%s_%s_%s_%s.csv'
 model_path = 'data/output/bst.model'
 submission_path = 'data/output/submission.csv'
 
@@ -183,13 +183,12 @@ def train(combi, print_cm=False):
         print_cm(cm, labels)
     return bst
 
-# combi = read_train_combi(['20160310'])
-combi = read_train_combi(['20160306','20160311'])
+combi = read_train_combi(['20160%03d' % i for i in [201]])
 bst = train(combi)
-validate(['201603%02d' % i for i in range(16,18)])
+validate(['20160%03d' % i for i in [216,221,226,301]] )
 
-bst = train(read_train_combi(['20160308','20160313']))
-make_submission('20160318', submission_path)
+# bst = train(read_train_combi(['20160308','20160313']))
+# make_submission('20160318', submission_path)
 
 # import matplotlib.pyplot as plt 
 # plt.style.use('ggplot') 

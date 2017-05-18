@@ -36,6 +36,7 @@ def recent_comment_date(date, comment_date=comment_date):
             return each
     return comment_date[0]
 
+
 def ndays_after(ndays, date_str):
     return datetime.strftime(datetime.strptime(date_str, '%Y%m%d') + timedelta(days=ndays), '%Y%m%d')
 
@@ -64,6 +65,21 @@ def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=
                 cell = cell if cm[i, j] > hide_threshold else empty_cell
             print(cell, end=" ")
         print()
+
+def convert_month_stage(dt):
+    day = int(dt) % 100
+    if day < 10:
+        return 0
+    elif day < 20:
+        return 1
+    else:
+        return 2
+
+def month_stage_between(d1, d2):
+    dt1 = datetime.strptime(d1, '%Y%m%d')
+    dt2 = datetime.strptime(d2, '%Y%m%d')
+    dt_mid = datetime.strftime(dt1 + (dt2 - dt2) / 2, '%Y%m%d')
+    return convert_month_stage(dt_mid)
 
 def convert_age(age_str):
     if age_str == '-1':
@@ -215,13 +231,17 @@ def make_train_data(d1, d2, d3, d4):
 
     user_brand_ = np.ones((brand_len, user_len), dtype=np.int32)
 
-    # user_sku_comment_num = np.ones()
-    # user_sku_has_bad_comment = 
-    # user_sku_comment_rate = 
+    user_buy_month_stage_  = np.zeros((3, user_len), dtype=np.int32)
+
+    user_pred_month_stage_ = np.zeros(3, dtype=np.int32)
+    user_pred_month_stage_[month_stage_between(d3, d4)] = 1
 
     dates = list(set(map(lambda d:d[:-2], [d1, d2, d3, d4])))
     for date in dates:
-        with open(action_paths % date) as f:
+        action_path = action_paths % date
+        if not os.path.exists(action_path):
+            continue
+        with open(action_path) as f:
             for line in f.readlines():
                 if line.startswith('user_id,sku_id,time,model_id,type,cate,brand'):
                     continue
@@ -235,6 +255,8 @@ def make_train_data(d1, d2, d3, d4):
                 if d1 <= date <= d4 and sku_id in sku_set:
                     i = user['user_id'][user_id]['index']
                     j = product['sku_id'][sku_id]['index']
+                    
+                    month_stage = convert_month_stage(date)
 
                     # train d1~d2
                     if d1 <= date <= d2 and 1 <= type_ <= 6:
@@ -262,10 +284,15 @@ def make_train_data(d1, d2, d3, d4):
                         k = brands[brand]
                         user_brand_[k][i] += 1
 
-                    # label d3~d4
+                        # if type_==4: TODO
+                        # user_buy_month_stage_0~3
+                        user_buy_month_stage_[month_stage][i] += 1
+
+                    # label d3~d4. !!DONT GET FEAT FROM HERE!!
                     if d3 <= date <= d4 and type_ == 4:
                         user_item_label[i][j] = 1
                         user_item_train.update({i:j})
+                        
 
                     
     user_cat8 = np.float64(user_cat8_pos / (user_cat8_pos + user_cat8_neg))
@@ -304,6 +331,14 @@ def make_train_data(d1, d2, d3, d4):
             'user_a2',
             'user_a3',
             'user_cat8', #0~1
+
+            'user_buy_month_stage_0',
+            'user_buy_month_stage_1',
+            'user_buy_month_stage_2',
+            'user_pred_month_stage_0',
+            'user_pred_month_stage_1',
+            'user_pred_month_stage_2',
+
         ] + user_brand_cols # user_brand_[1] = 0.x
 
     table = []
@@ -337,12 +372,16 @@ def make_train_data(d1, d2, d3, d4):
             [np.int32(user_ai_[k][i]) for k in [1,2,3]]
             +
             [np.float64(user_cat8[i]),] 
-            + 
+            +
+            [user_buy_month_stage_[k][i] for k in range(3)]
+            +
+            [user_pred_month_stage_[k] for k in range(3)] 
+            +
             [user_brand_[k][i] for k in range(len(brands))]) 
 
     df = pd.DataFrame(table, columns=columns)
     dummy_feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age']]
-    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6', 'user_lv_cd', 'user_reg_tm', 'user_a1', 'user_a2', 'user_a3', 'user_cat8', 'sku_a1', 'sku_a2', 'sku_a3','sku_comment_num', 'sku_has_bad_comment', 'sku_bad_comment_rate'] + user_brand_cols]] + dummy_feats, axis=1)
+    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6', 'user_lv_cd', 'user_reg_tm', 'user_a1', 'user_a2', 'user_a3', 'user_cat8', 'sku_a1', 'sku_a2', 'sku_a3','sku_comment_num', 'sku_has_bad_comment', 'sku_bad_comment_rate', 'user_buy_month_stage_0', 'user_buy_month_stage_1', 'user_buy_month_stage_2', 'user_pred_month_stage_0', 'user_pred_month_stage_1', 'user_pred_month_stage_2'] + user_brand_cols]] + dummy_feats, axis=1)
 
     path = train_path % (d1, d2, d3, d4)
     df.to_csv(path, index=False, float_format='%.6f')
