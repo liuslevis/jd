@@ -241,14 +241,9 @@ def make_train_data(d1, d2, d3, d4):
         if not os.path.exists(action_path):
             continue
 
-        cnt = 0
         with open(action_path) as f:
             for line in f.readlines():
                 if line.startswith('user_id,sku_id,time,model_id,type,cate,brand'):
-                    continue
-
-                cnt += 1
-                if cnt % 10000000000 == 0:
                     continue
 
                 user_id, sku_id, time, model_id, type_, cate, brand = parse_action_line(line)
@@ -264,8 +259,6 @@ def make_train_data(d1, d2, d3, d4):
 
                     # train d1~d2
                     if d1 <= date <= d2 and 1 <= type_ <= 6:
-                        print(d1,'<=',date,'<=',d2, '\t', line)
-
                         user_item_action_[type_][i][j] += 1
                         user_item_train.update({i:j})
 
@@ -286,6 +279,8 @@ def make_train_data(d1, d2, d3, d4):
                         # user_brand
                         k = brands[brand]
                         user_brand_[k][i] += 1
+                        # if k==56:
+                            # print('debug user_brand_[%d][%d] uid=%d' % (k, i, user_id), line)
 
                         # user_buy_month_stage_0~3
                         if type_==4:
@@ -293,8 +288,6 @@ def make_train_data(d1, d2, d3, d4):
 
                     # label d3~d4. !!DONT GET FEAT FROM HERE!!
                     if d3 <= date <= d4 and type_ == 4:
-                        print(d3,'<=',date,'<=',d4)
-
                         user_item_label[i][j] = 1
                         user_item_train.update({i:j})
                         

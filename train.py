@@ -43,19 +43,24 @@ def read_train_combi(d1_li):
     combi = pd.concat([combi_true, combi_false[:false_num]])
     return combi
 
+# TODO 检查 report() 没有在训练集合出现过的用户？
+# d1='20160306' user_brand_91<0.0097565 yes,mis -0.08 no 0.09
+# record_recall=1 record_acc=1 user_acc=1 user_recall=0.29
+
 # F11,F12,score
 def report(X, y, y_pred, print_score=False):
     y = y.values
 
-    true_records = [] # [(user_id,item_id),...]
-    pred_records = []
-
     true_users = set()
     pred_users = set()
-
-
+    all_users  = set()
+    true_records = [] # [(user_id,item_id),...]
+    pred_records = []
+    all_records  = []
     for i,row in X[['user_id','sku_id']].iterrows():
         user_id, item_id = row['user_id'], row['sku_id']
+        all_users.add(user_id)
+        all_records.append((user_id, item_id))
         if y[i] == 1:
             true_records.append((user_id, item_id))
             true_users.add(user_id)
@@ -67,28 +72,23 @@ def report(X, y, y_pred, print_score=False):
         print('no buy prediction!')
         return
 
-    all_users = pred_users.union(true_users)
-    all_records = pred_records + true_records
+    user_cm = np.zeros((2,2))
+    for user in all_users:
+        i = int(user in true_users)
+        j = int(user in pred_users)
+        user_cm[i][j] += 1
+    # print_cm(user_cm, labels)
+    user_recall = user_cm[1][1] / (user_cm[1][1] + user_cm[0][1]) # TP / (TP+FN)
+    user_acc    = user_cm[1][1] / (user_cm[1][1] + user_cm[0][0]) # TP / (TP+FP)
 
-    pos = 0
-    neg = 0
-    for pred_user in pred_users:
-        if pred_user in true_users:
-            pos += 1
-        else:
-            neg += 1
-    user_recall = 1.0 * pos / len(all_users)
-    user_acc = 1.0 * pos / ( pos + neg)
-
-    pos = 0
-    neg = 0
-    for pred_record in pred_records:
-        if pred_record in true_records:
-            pos += 1
-        else:
-            neg += 1
-    record_recall = 1.0 * pos / len(pred_records)
-    record_acc = 1.0 * pos / ( pos + neg)
+    record_cm = np.zeros((2,2))
+    for record in all_records:
+        i = int(record in true_records)
+        j = int(record in pred_records)
+        record_cm[i][j] += 1
+    # print_cm(record_cm, labels)
+    record_recall = record_cm[1][1] / (record_cm[1][1] + record_cm[0][1]) # TP / (TP+FN)
+    record_acc    = record_cm[1][1] / (record_cm[1][1] + record_cm[0][0]) # TP / (TP+FP)
 
     F11 = 6.0 * user_recall * user_acc / (5.0 * user_recall + user_acc)
     F12 = 5.0 * record_acc * record_recall / (2.0 * record_recall + 3 * record_acc)
@@ -125,7 +125,7 @@ def make_submission(d1, submission_path):
     print('%s\t%s' %(d1, submission_path))
     return df
 
-def validate(d1_li, print_cm=False):
+def validate(d1_li, bst=None, print_cm=False):
     print('validate\tscore\tF11\tF12')
     for d1 in d1_li:
         combi = read_input_data(d1)
@@ -134,8 +134,10 @@ def validate(d1_li, print_cm=False):
         y_valid = combi['label']
         d_valid = xgb.DMatrix(strip_id(X_valid), label=y_valid, missing = missing_value)
 
-        bst = xgb.Booster({'nthread':4})
-        bst.load_model(model_path)
+        if bst is None:
+            bst = xgb.Booster({'nthread':4})
+            bst.load_model(model_path)
+
         y_valid_score = bst.predict(d_valid)
         y_valid_pred = np.int32(y_valid_score > threshold)
 
@@ -160,8 +162,8 @@ def train(combi, print_cm=False):
     d_train = xgb.DMatrix(strip_id(X_train), label=y_train, missing = missing_value)
     d_test = xgb.DMatrix(strip_id(X_test), label=y_test, missing = missing_value)
     params = {
-        'n_estimators':500,
-        'max_depth':8, 
+        'n_estimators':1,
+        'max_depth':1, 
         'eta':0.05, 
         'silent':1, 
         'objective':'binary:logistic', 
@@ -179,19 +181,19 @@ def train(combi, print_cm=False):
         print_cm(cm, labels)
     return bst
 
-combi = read_train_combi(['2016%04d' % i for i in [201]])
+combi = read_train_combi(['2016%04d' % i for i in [206]])
 bst = train(combi)
-validate(['2016%04d' % i for i in [306,311,316]] )
+validate(['2016%04d' % i for i in [306,311,316]], bst)
 
-bst = train(read_train_combi(['2016%04d' % i for i in [201]]))
-make_submission('20160318', submission_path)
+# bst = train(read_train_combi(['2016%04d' % i for i in [201]]))
+# make_submission('20160318', submission_path)
 
-# import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt 
 # from matplotlib.pylab import rcParams
 # rcParams['figure.figsize'] = 48, 16
-# plt.style.use('ggplot') 
-# xgb.plot_importance(bst) 
-# xgb.plot_tree(bst, num_trees=1) 
-# xgb.to_graphviz(bst, num_trees=1)
-# # plt.savefig('data/output/xgb.png')  
-# plt.show()
+plt.style.use('ggplot') 
+xgb.plot_importance(bst) 
+xgb.plot_tree(bst, num_trees=1) 
+xgb.to_graphviz(bst, num_trees=1)
+# plt.savefig('data/output/xgb.png')  
+plt.show()
