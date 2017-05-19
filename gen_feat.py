@@ -240,10 +240,17 @@ def make_train_data(d1, d2, d3, d4):
         action_path = action_paths % date
         if not os.path.exists(action_path):
             continue
+
+        cnt = 0
         with open(action_path) as f:
             for line in f.readlines():
                 if line.startswith('user_id,sku_id,time,model_id,type,cate,brand'):
                     continue
+
+                cnt += 1
+                if cnt % 10000000000 == 0:
+                    continue
+
                 user_id, sku_id, time, model_id, type_, cate, brand = parse_action_line(line)
                 date = time.split(' ')[0].replace('-', '')
                 
@@ -254,12 +261,10 @@ def make_train_data(d1, d2, d3, d4):
                 if d1 <= date <= d4 and sku_id in sku_set:
                     i = user['user_id'][user_id]['index']
                     j = product['sku_id'][sku_id]['index']
-                    
 
                     # train d1~d2
                     if d1 <= date <= d2 and 1 <= type_ <= 6:
-                        if type_ >= user_item_action_.shape[0] or i >= user_item_action_.shape[1] or j >= user_item_action_.shape[2]:
-                            print('debug', user_item_action_.shape, type_, i, j)
+                        print(d1,'<=',date,'<=',d2, '\t', line)
 
                         user_item_action_[type_][i][j] += 1
                         user_item_train.update({i:j})
@@ -288,6 +293,8 @@ def make_train_data(d1, d2, d3, d4):
 
                     # label d3~d4. !!DONT GET FEAT FROM HERE!!
                     if d3 <= date <= d4 and type_ == 4:
+                        print(d3,'<=',date,'<=',d4)
+
                         user_item_label[i][j] = 1
                         user_item_train.update({i:j})
                         

@@ -13,9 +13,7 @@ threshold = 0.5
 missing_value = -999.0
 labels = ['0', '1']
 ignore_feats = [
-    'user_brand_',
-    'act_1',
-    'user_cat8',
+    # 'act_4',      # XX
     ]
 
 def strip_feats(df, ignore_feats):
@@ -157,7 +155,7 @@ def train(combi, print_cm=False):
 
     print('samples: %d/%d' % (len(y_train), len(y_test)))
     print('ignore feats:', ' '.join(ignore_feats))
-    print('train  feats:', ' '.join(features))
+    print('using  feats:', ' '.join(features))
 
     d_train = xgb.DMatrix(strip_id(X_train), label=y_train, missing = missing_value)
     d_test = xgb.DMatrix(strip_id(X_test), label=y_test, missing = missing_value)
@@ -183,15 +181,17 @@ def train(combi, print_cm=False):
 
 combi = read_train_combi(['2016%04d' % i for i in [201]])
 bst = train(combi)
-validate(['2016%04d' % i for i in [206, 211, 216]] )
+validate(['2016%04d' % i for i in [306,311,316]] )
 
-# bst = train(read_train_combi(['20160201','20160217','20160311']))
-# make_submission('20160318', submission_path)
+bst = train(read_train_combi(['2016%04d' % i for i in [201]]))
+make_submission('20160318', submission_path)
 
 # import matplotlib.pyplot as plt 
+# from matplotlib.pylab import rcParams
+# rcParams['figure.figsize'] = 48, 16
 # plt.style.use('ggplot') 
 # xgb.plot_importance(bst) 
 # xgb.plot_tree(bst, num_trees=1) 
 # xgb.to_graphviz(bst, num_trees=1)
-# plt.savefig('output/xgb.png')  
+# # plt.savefig('data/output/xgb.png')  
 # plt.show()
