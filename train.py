@@ -155,21 +155,23 @@ def train(combi, print_cm=False):
     y_combi = combi['label']
     X_train, X_test, y_train, y_test = train_test_split(X_combi, y_combi, test_size=0.5, random_state=0)
 
-    print('samples: %d/%d' % (len(y_train), len(y_test)))
-    print('ignore feats:', ' '.join(ignore_feats))
-    print('using  feats:', ' '.join(features))
-
-    d_train = xgb.DMatrix(strip_id(X_train), label=y_train, missing = missing_value)
-    d_test = xgb.DMatrix(strip_id(X_test), label=y_test, missing = missing_value)
     params = {
-        'n_estimators':1,
-        'max_depth':1, 
+        'n_estimators':500,
+        'max_depth':8, 
         'eta':0.05, 
         'silent':1, 
         'objective':'binary:logistic', 
         'nthread':4, 
         'eval_metric':['auc', 'logloss']
         }
+
+    print('samples: %d/%d' % (len(y_train), len(y_test)))
+    print('ignore feats:', ' '.join(ignore_feats))
+    # print('using  feats:', ' '.join(features))
+    print('param: n_estimators:%d max_depth:%d' % (params['n_estimators'], params['max_depth']) )
+
+    d_train = xgb.DMatrix(strip_id(X_train), label=y_train, missing = missing_value)
+    d_test = xgb.DMatrix(strip_id(X_test), label=y_test, missing = missing_value)
     evallist = [(d_test, 'eval'), (d_train, 'train')]
     num_round = 2
     bst = xgb.train(params, d_train, num_round, evallist)
@@ -181,7 +183,7 @@ def train(combi, print_cm=False):
         print_cm(cm, labels)
     return bst
 
-combi = read_train_combi(['2016%04d' % i for i in [206]])
+combi = read_train_combi(['2016%04d' % i for i in [201,206,211,216,221,226]])
 bst = train(combi)
 validate(['2016%04d' % i for i in [306,311,316]], bst)
 
