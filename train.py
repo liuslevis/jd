@@ -156,7 +156,7 @@ def train(combi, print_cm=False):
     X_train, X_test, y_train, y_test = train_test_split(X_combi, y_combi, test_size=0.5, random_state=0)
 
     params = {
-        'n_estimators':500,
+        'n_estimators':10,
         'max_depth':8, 
         'eta':0.05, 
         'silent':1, 
