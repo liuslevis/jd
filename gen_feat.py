@@ -276,11 +276,10 @@ def make_train_data(d1, d2, d3, d4):
                         else:
                             user_cat8_neg[i] += 1
 
-                        # user_brand
-                        k = brands[brand]
-                        user_brand_[k][i] += 1
-                        # if k==56:
-                            # print('debug user_brand_[%d][%d] uid=%d' % (k, i, user_id), line)
+                        # user_brand TODO
+                        if type_==4 or type_==5:
+                            k = brands[brand]
+                            user_brand_[k][i] += 1
 
                         # user_buy_month_stage_0~3
                         if type_==4:

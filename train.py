@@ -43,10 +43,6 @@ def read_train_combi(d1_li):
     combi = pd.concat([combi_true, combi_false[:false_num]])
     return combi
 
-# TODO 检查 report() 没有在训练集合出现过的用户？
-# d1='20160306' user_brand_91<0.0097565 yes,mis -0.08 no 0.09
-# record_recall=1 record_acc=1 user_acc=1 user_recall=0.29
-
 # F11,F12,score
 def report(X, y, y_pred, print_score=False):
     y = y.values
