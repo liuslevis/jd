@@ -9,6 +9,7 @@ import os,sys
 import math
 import numpy as np
 from itertools import combinations, permutations
+import itertools
 
 train_days = 28 # 14
 label_days = 4
@@ -20,13 +21,24 @@ user_path    = './data/raw/JData_User.csv'
 train_path   = 'data/input/train_%s_%s_%s_%s.csv'
 
 USE_CACHE = True
-ACTION_TYPES = 6
+AI_TYPES = 3
+PROP_TYPES = 4 + 3 + 3 # a1_-1~3 a2_-1~2 a3_-1~2
+ACT_TYPES = 6
+INT_TYPES = 6
 
 comment_date = ['20160201', '20160208', '20160215', '20160222', '20160229', '20160307', '20160314', '20160321', '20160328', '20160404', '20160411', '20160415']
 
-brands_li = [3,13,14,24,25,30,48,49,51,70,76,83,88,90,91,101,116,124,127,159,174,180,197,200,209,211,214,225,227,244,249,263,283,285,291,299,306,318,321,324,328,331,336,354,355,370,375,383,403,404,427,438,453,479,484,489,499,515,541,545,554,556,561,562,571,574,594,596,599,605,622,623,635,655,658,665,673,674,677,693,717,739,752,759,766,772,790,800,801,804,812,837,855,857,871,875,885,900,905,907,916,922,]
+brands_li = [3,13,14,24,25,30,48,49,51,70,76,83,88,90,91,101,116,124,127,159,174,180,197,200,209,211,214,225,227,244,249,263,283,285,291,299,306,318,321,324,328,331,336,354,355,370,375,383,403,404,427,438,453,479,484,489,499,515,541,545,554,556,561,562,571,574,594,596,599,605,622,623,635,655,658,665,673,674,677,693,717,739,752,759,766,772,790,800,801,804,812,837,855,857,871,875,885,900,905,907,916,922,999] # 999 out of dict
 brands = {brand : brands_li.index(brand) for brand in brands_li}
-user_brand_cols = ['user_brand_%d' % i for i in range(len(brands))]
+brand_len = len(brands)
+
+user_prop_inteval_cols =       ['user_prop%d_inteval%d' % (i,j) for i,j in itertools.product(range(PROP_TYPES), range(INT_TYPES))]
+user_brand_inteval_cols =    ['user_brand%d_inteval%d' % (i,j) for i,j in itertools.product(range(brand_len), range(INT_TYPES))]
+user_act_inteval_cols =      ['user_act%d_inteval%d' % (i,j) for i,j in itertools.product(range(ACT_TYPES), range(INT_TYPES))]
+user_prop_act_inteval_cols =   ['user_prop%d_act%d_inteval%d' % (i,j,k) for i,j,k in itertools.product(range(PROP_TYPES), range(ACT_TYPES), range(INT_TYPES))]
+user_prop_brand_inteval_cols = ['user_prop%d_brand%d_inteval%d' % (i,j,k) for i,j,k in itertools.product(range(PROP_TYPES), range(brand_len), range(INT_TYPES))]
+user_act_brand_inteval_cols =['user_act%d_brand%d_inteval%d' % (i,j,k) for i,j,k in itertools.product(range(ACT_TYPES), range(brand_len), range(INT_TYPES))]
+user_cat8_inteval_cols =     ['user_cat8_inteval%d' % i for i in range(INT_TYPES)]
 
 def recent_comment_date(date, comment_date=comment_date):
     for each in comment_date:
@@ -36,6 +48,20 @@ def recent_comment_date(date, comment_date=comment_date):
             return each
     return comment_date[0]
 
+def inteval_index_from(d, d3):
+    inteval_days = (datetime.strptime(str(d3), '%Y%m%d') - datetime.strptime(str(d), '%Y%m%d')).days
+    if inteval_days <= 1:
+        return 0
+    elif inteval_days <= 3:
+        return 1
+    elif inteval_days <= 7:
+        return 3
+    elif inteval_days <= 14:
+        return 4
+    else:
+        return 5
+
+# inteval_days_index_from(d,d3)
 def ndays_after(ndays, date_str):
     return datetime.strftime(datetime.strptime(date_str, '%Y%m%d') + timedelta(days=ndays), '%Y%m%d')
 
@@ -200,199 +226,269 @@ def parse_action_line(line):
     brand = int(brand) if len(brand) > 0 else -1
     return user_id, sku_id, time, model_id, action, cate, brand
 
-# d1 = '20160206'
-# d2 = ndays_after(train_days, d1)
-# d3 = ndays_after(1, d2)
-# d4 = ndays_after(4, d3)
-def make_train_data(d1, d2, d3, d4):
-    user = get_user(d1, d2, d3, d4)
-    product = get_product()
-    comment = get_comment()
+def props_from_product(product, product_index):
+    props = []
+    a1 = product['index'][product_index]['a1']
+    a2 = product['index'][product_index]['a2']
+    a3 = product['index'][product_index]['a3']
+    if a1 == -1:
+        props.append(0)
+    elif a1 == 1:
+        props.append(1)
+    elif a1 == 2:
+        props.append(2)
+    elif a1 == 3:
+        props.append(3)
+    elif a2 == -1:
+        props.append(4)
+    elif a2 == 1:
+        props.append(5)
+    elif a2 == 2:
+        props.append(6)
+    elif a3 == -1:
+        props.append(7)
+    elif a3 == 1:
+        props.append(8)
+    elif a3 == 1:
+        props.append(9)
+    return props    
 
-    user_set = set(user['user_id'].keys())
-    sku_set = set(product['sku_id'].keys())
+d1 = '20160206'
+d2 = ndays_after(train_days, d1)
+d3 = ndays_after(1, d2)
+d4 = ndays_after(4, d3)
+# def make_train_data(d1, d2, d3, d4):
+user = get_user(d1, d2, d3, d4)
+product = get_product()
+comment = get_comment()
 
-    user_len = len(user_set)
-    product_len = len(sku_set)
-    brand_len = len(brands)
+user_set = set(user['user_id'].keys())
+sku_set = set(product['sku_id'].keys())
 
-    user_item_train = {} # {i:j}
-    user_item_label = np.zeros((user_len, product_len)) # M[user_index][item_index] = label
-    user_item_action_ = np.zeros((ACTION_TYPES+1, user_len, product_len)) # M[type][user_index][item_index] = sum
+user_len = len(user_set)
+product_len = len(sku_set)
 
-    user_ai_ = None #M[a_i][user_index]
-    user_ai_pos = np.ones((3+1, user_len), dtype=np.int32)
-    user_ai_neg = np.ones((3+1, user_len), dtype=np.int32)
+user_item_train = {} # {i:j}
+user_item_label = np.zeros((user_len, product_len)) # M[user_index][item_index] = label
+user_item_action_ = np.zeros((ACT_TYPES+1, user_len, product_len)) # M[type][user_index][item_index] = sum
 
-    user_cat8     = None
-    user_cat8_pos = np.ones((user_len), dtype=np.int32)
-    user_cat8_neg = np.ones((user_len), dtype=np.int32)
+user_ai_ = None #M[a_i][user_index]
+user_ai_pos = np.ones((AI_TYPES+1, user_len), dtype=np.int32)
+user_ai_neg = np.ones((AI_TYPES+1, user_len), dtype=np.int32)
 
-    user_brand_ = np.ones((brand_len, user_len), dtype=np.int32)
+user_cat8     = None
+user_cat8_pos = np.ones((user_len), dtype=np.int32)
+user_cat8_neg = np.ones((user_len), dtype=np.int32)
 
-    user_buy_month_stage_  = np.zeros((3, user_len), dtype=np.int32)
+user_brand_ = np.ones((brand_len, user_len), dtype=np.int32)
 
-    user_pred_month_stage_ = np.zeros(3, dtype=np.int32)
-    user_pred_month_stage_[month_stage_between(d3, d4)] = 1
+user_buy_month_stage_  = np.zeros((AI_TYPES, user_len), dtype=np.int32)
 
-    dates = list(set(map(lambda d:d[:-2], [d1, d2, d3, d4])))
-    for date in dates:
-        action_path = action_paths % date
-        if not os.path.exists(action_path):
-            continue
+user_pred_month_stage_ = np.zeros(AI_TYPES, dtype=np.int32)
+user_pred_month_stage_[month_stage_between(d3, d4)] = 1
 
-        with open(action_path) as f:
-            for line in f.readlines():
-                if line.startswith('user_id,sku_id,time,model_id,type,cate,brand'):
-                    continue
+user_prop_inteval = np.zeros((user_len, PROP_TYPES, INT_TYPES))
+user_brand_inteval = np.zeros((user_len, brand_len, INT_TYPES))
+user_act_inteval = np.zeros((user_len, ACT_TYPES, INT_TYPES))
+user_prop_act_inteval = np.zeros((user_len, PROP_TYPES, ACT_TYPES, INT_TYPES))
+user_prop_brand_inteval = np.zeros((user_len, PROP_TYPES, brand_len, INT_TYPES))
+user_act_brand_inteval = np.zeros((user_len, ACT_TYPES, brand_len, INT_TYPES))
+user_cat8_inteval = np.zeros((user_len, INT_TYPES))
 
-                user_id, sku_id, time, model_id, type_, cate, brand = parse_action_line(line)
-                date = time.split(' ')[0].replace('-', '')
-                
-                if date > d4:
-                    break
+dates = list(set(map(lambda d:d[:-2], [d1, d2, d3, d4])))
+for date in dates:
+    action_path = action_paths % date
+    if not os.path.exists(action_path):
+        continue
 
-                # record in d1~d4
-                if d1 <= date <= d4 and sku_id in sku_set:
-                    i = user['user_id'][user_id]['index']
-                    j = product['sku_id'][sku_id]['index']
+    with open(action_path) as f:
+        for line in f.readlines():
+            if line.startswith('user_id,sku_id,time,model_id,type,cate,brand'):
+                continue
 
-                    # train d1~d2
-                    if d1 <= date <= d2 and 1 <= type_ <= 6:
-                        user_item_action_[type_][i][j] += 1
-                        user_item_train.update({i:j})
+            user_id, sku_id, time, model_id, type_, cate, brand_id = parse_action_line(line)
+            brand = brands[brand_id] if brand_id in brands else brands[999]
+            date = time.split(' ')[0].replace('-', '')
+            
+            if date > d4:
+                break
 
-                        # user_a1 2 3
-                        for k in range(1,4):
-                            ai = 'a%d' % k
-                            if product['index'][j][ai] > -1:
-                                user_ai_pos[k][i] += 1 
-                            else:
-                                user_ai_neg[k][i] += 1
+            # record in d1~d4
+            if d1 <= date <= d4 and sku_id in sku_set:
+                i = user['user_id'][user_id]['index']
+                j = product['sku_id'][sku_id]['index']
 
-                        # user_cat8
-                        if cate == 8:
-                            user_cat8_pos[i] += 1
+                # train d1~d2
+                if d1 <= date <= d2 and 1 <= type_ <= 6:
+                    user_item_action_[type_][i][j] += 1
+                    user_item_train.update({i:j})
+
+                    inteval = inteval_index_from(date, d3)
+
+                    # user_a1 2 3
+                    for k in range(1,4):
+                        if product['index'][j]['a%d' % k] > -1:
+                            user_ai_pos[k][i] += 1 
                         else:
-                            user_cat8_neg[i] += 1
-
-                        # user_brand TODO
-                        if type_==4 or type_==5:
-                            k = brands[brand]
-                            user_brand_[k][i] += 1
-
-                        # user_buy_month_stage_0~3
-                        if type_==4:
-                            user_buy_month_stage_[month_stage_between(d1,d2)][i] += 1
-
-                    # label d3~d4. !!DONT GET FEAT FROM HERE!!
-                    if d3 <= date <= d4 and type_ == 4:
-                        user_item_label[i][j] = 1
-                        user_item_train.update({i:j})
-                        
-
+                            user_ai_neg[k][i] += 1
                     
-    user_cat8 = np.float64(user_cat8_pos / (user_cat8_pos + user_cat8_neg))
-    user_ai_  = np.float64(user_ai_pos   / (user_ai_pos + user_ai_neg))
-    user_brand_ = user_brand_ / user_brand_.sum(axis=0) # normalize
+                    # user_cat8
+                    if cate == 8:
+                        user_cat8_pos[i] += 1
+                        user_cat8_inteval[i][inteval] += 1
+                    else:
+                        user_cat8_neg[i] += 1
 
-    comment_date = '20160201'
+                    # user_brand TODO
+                    if type_==4 or type_==5:
+                        user_brand_[brand][i] += 1
 
-    columns = [
-            'label',
-            'user_id',
-            'sku_id',
-            'act_1',
-            'act_2',
-            'act_3',
-            'act_4',
-            'act_5',
-            'act_6',
+                    # user_buy_month_stage_0~3
+                    if type_==4:
+                        user_buy_month_stage_[month_stage_between(d1,d2)][i] += 1
 
-            'user_sex',
-            'user_age',
-            'user_lv_cd',
-            'user_reg_tm',
+                    # user_a0 1 2_
+                    act = type_ - 1    
+                    props = props_from_product(product, j)
+                    for prop in props:
+                        user_prop_act_inteval[i][prop][act][inteval] += 1
+                        user_prop_brand_inteval[i][prop][brand][inteval]
+                        user_prop_inteval[i][prop][inteval] += 1
+                    user_act_inteval[i][act][inteval] += 1
+                    user_brand_inteval[i][brand][inteval] += 1
+                    user_act_brand_inteval[i][act][brand] += 1
+                    user_act_inteval[i][act][inteval] += 1
 
-            'sku_a1',
-            'sku_a2',
-            'sku_a3',
-            'sku_cate',
-            'sku_brand',
+                # label d3~d4. !!DONT GET FEAT FROM HERE!!
+                if d3 <= date <= d4 and type_ == 4:
+                    user_item_label[i][j] = 1
+                    user_item_train.update({i:j})
+                
+user_cat8 = np.float64(user_cat8_pos / (user_cat8_pos + user_cat8_neg))
+user_ai_  = np.float64(user_ai_pos   / (user_ai_pos + user_ai_neg))
+user_brand_ = user_brand_ / user_brand_.sum(axis=0) # normalize
 
-            'sku_comment_num',
-            'sku_has_bad_comment',
-            'sku_bad_comment_rate',
+comment_date = '20160201'
 
-            'user_a1',
-            'user_a2',
-            'user_a3',
-            'user_cat8', #0~1
+all_other_cols =  \
+    + user_prop_inteval_cols \
+    + user_brand_inteval_cols \
+    + user_act_inteval_cols \
+    + user_prop_act_inteval_cols \
+    + user_prop_brand_inteval_cols \
+    + user_act_brand_inteval_cols \
+    + user_cat8_inteval_cols
 
-            'user_buy_month_stage_0',
-            'user_buy_month_stage_1',
-            'user_buy_month_stage_2',
-            'user_pred_month_stage_0',
-            'user_pred_month_stage_1',
-            'user_pred_month_stage_2',
+columns = [
+        'label',
+        'user_id',
+        'sku_id',
+        'act_1',
+        'act_2',
+        'act_3',
+        'act_4',
+        'act_5',
+        'act_6',
 
-        ] + user_brand_cols # user_brand_[1] = 0.x
+        'user_sex',
+        'user_age',
+        'user_lv_cd',
+        'user_reg_tm',
 
-    table = []
-    for i, j in user_item_train.items():
-        user_id = np.int32(user['index'][i]['user_id'])
-        sku_id = np.int32(product['index'][j]['sku_id'])
-        comment_info = comment[sku_id][comment_date] if sku_id in comment and comment_date in comment[sku_id] else {'comment_num':0, 'has_bad_comment':-1, 'bad_comment_rate':0}
+        'sku_a1',
+        'sku_a2',
+        'sku_a3',
+        'sku_cate',
+        'sku_brand',
+
+        'sku_comment_num',
+        'sku_has_bad_comment',
+        'sku_bad_comment_rate',
+
+        'user_a1',
+        'user_a2',
+        'user_a3',
+        'user_cat8', #0~1
+
+        'user_buy_month_stage_0',
+        'user_buy_month_stage_1',
+        'user_buy_month_stage_2',
+        'user_pred_month_stage_0',
+        'user_pred_month_stage_1',
+        'user_pred_month_stage_2',
+
+    ] +  all_other_cols
+
+
+table = []
+for i, j in user_item_train.items():
+    user_id = np.int32(user['index'][i]['user_id'])
+    sku_id = np.int32(product['index'][j]['sku_id'])
+    comment_info = comment[sku_id][comment_date] if sku_id in comment and comment_date in comment[sku_id] else {'comment_num':0, 'has_bad_comment':-1, 'bad_comment_rate':0}
+    
+    table.append([
+        np.int32(user_item_label[i][j]),
+        np.int32(user_id),
+        np.int32(sku_id),]
+        +
+        [np.int32(user_item_action_[k][i][j]) for k in [1,2,3,4,5,6]]
+        +
+        [np.int32(user['index'][i]['sex']),
+        np.int32(user['index'][i]['age']),
+        np.int32(user['index'][i]['user_lv_cd']),
+        np.int32(user['index'][i]['user_reg_tm']),]
+        +
+        [np.int32(product['index'][j]['a1']),
+        np.int32(product['index'][j]['a2']),
+        np.int32(product['index'][j]['a3']),
+        np.int32(product['index'][j]['cate']),
+        np.int32(product['index'][j]['brand']),]
+        +
+        [np.int32( comment_info['comment_num']),
+        np.int32(  comment_info['has_bad_comment']),
+        np.float64(comment_info['bad_comment_rate'])]
+        +
+        [np.int32(user_ai_[k][i]) for k in [1,2,3]]
+        +
+        [np.float64(user_cat8[i]),] 
+        +
+        [user_buy_month_stage_[k][i] for k in range(3)]
+        +
+        [user_pred_month_stage_[k] for k in range(3)] 
+        +
+        [user_prop_inteval[i][j][k] for j,k in itertools.product(range(PROP_TYPES), range(INT_TYPES))]
+        +
+        [user_brand_inteval[i][j][k] for j,k in itertools.product(range(brand_len), range(INT_TYPES))]
+        +
+        [user_act_inteval[i][j][k] for j,k in itertools.product(range(ACT_TYPES), range(INT_TYPES))]
+        +
+        [user_prop_act_inteval[i][j][k][l] for j,k,l in itertools.product(range(PROP_TYPES), range(ACT_TYPES), range(INT_TYPES))]
+        +
+        [user_prop_brand_inteval[i][j][k][l] for j,k,l in itertools.product(range(PROP_TYPES), range(brand_len), range(INT_TYPES))]
+        +
+        [user_act_brand_inteval[i][j][k][l] for j,k,l in itertools.product(range(ACT_TYPES), range(brand_len), range(INT_TYPES))]
+        +
+        [user_cat8_inteval[i][j] for j in range(INT_TYPES)]
+        ) 
+
+
+df = pd.DataFrame(table, columns=columns)
+dummy_feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age']]
+df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6', 'user_lv_cd', 'user_reg_tm', 'user_a1', 'user_a2', 'user_a3', 'user_cat8', 'sku_a1', 'sku_a2', 'sku_a3','sku_comment_num', 'sku_has_bad_comment', 'sku_bad_comment_rate', 'user_buy_month_stage_0', 'user_buy_month_stage_1', 'user_buy_month_stage_2', 'user_pred_month_stage_0', 'user_pred_month_stage_1', 'user_pred_month_stage_2'] + all_other_cols]] + dummy_feats, axis=1)
+
+path = train_path % (d1, d2, d3, d4)
+df.to_csv(path, index=False, float_format='%.6f')
+print(path)
+
+# if __name__ == '__main__':
+#     if len(sys.argv) < 2:
+#         print('usage:')
+#         print('\tipython3 gen_feat.py 20160201 20160206 20160211 20160216 20160221 20160226 20160301 20160306 20160311 20160316 20160318')
         
-        table.append([
-            np.int32(user_item_label[i][j]),
-            np.int32(user_id),
-            np.int32(sku_id),]
-            +
-            [np.int32(user_item_action_[k][i][j]) for k in [1,2,3,4,5,6]]
-            +
-            [np.int32(user['index'][i]['sex']),
-            np.int32(user['index'][i]['age']),
-            np.int32(user['index'][i]['user_lv_cd']),
-            np.int32(user['index'][i]['user_reg_tm']),]
-            +
-            [np.int32(product['index'][j]['a1']),
-            np.int32(product['index'][j]['a2']),
-            np.int32(product['index'][j]['a3']),
-            np.int32(product['index'][j]['cate']),
-            np.int32(product['index'][j]['brand']),]
-            +
-            [np.int32( comment_info['comment_num']),
-            np.int32(  comment_info['has_bad_comment']),
-            np.float64(comment_info['bad_comment_rate'])]
-            +
-            [np.int32(user_ai_[k][i]) for k in [1,2,3]]
-            +
-            [np.float64(user_cat8[i]),] 
-            +
-            [user_buy_month_stage_[k][i] for k in range(3)]
-            +
-            [user_pred_month_stage_[k] for k in range(3)] 
-            +
-            [user_brand_[k][i] for k in range(len(brands))]) 
-
-    df = pd.DataFrame(table, columns=columns)
-    dummy_feats = [pd.get_dummies(df[col], prefix=col) for col in ['user_sex', 'user_age']]
-    df = pd.concat([df[['label', 'user_id', 'sku_id', 'act_1', 'act_2', 'act_3', 'act_4', 'act_5', 'act_6', 'user_lv_cd', 'user_reg_tm', 'user_a1', 'user_a2', 'user_a3', 'user_cat8', 'sku_a1', 'sku_a2', 'sku_a3','sku_comment_num', 'sku_has_bad_comment', 'sku_bad_comment_rate', 'user_buy_month_stage_0', 'user_buy_month_stage_1', 'user_buy_month_stage_2', 'user_pred_month_stage_0', 'user_pred_month_stage_1', 'user_pred_month_stage_2'] + user_brand_cols]] + dummy_feats, axis=1)
-
-    path = train_path % (d1, d2, d3, d4)
-    df.to_csv(path, index=False, float_format='%.6f')
-    print(path)
-
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print('usage:')
-        print('\tipython3 gen_feat.py 20160201 20160206 20160211 20160216 20160221 20160226 20160301 20160306 20160311 20160316 20160318')
-        
-    else:
-        # d1 ~ d2 训练数据 d3 ~ d4标签
-        for d1 in sys.argv[1:]:
-            d2 = ndays_after(train_days, d1)
-            d3 = ndays_after(1, d2)
-            d4 = ndays_after(label_days, d3)
-            make_train_data(d1, d2, d3, d4)
+#     else:
+#         # d1 ~ d2 训练数据 d3 ~ d4标签
+#         for d1 in sys.argv[1:]:
+#             d2 = ndays_after(train_days, d1)
+#             d3 = ndays_after(1, d2)
+#             d4 = ndays_after(label_days, d3)
+#             make_train_data(d1, d2, d3, d4)
