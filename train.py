@@ -7,21 +7,44 @@ train_path = 'data/input/train_%s_%s_%s_%s.csv'
 model_path = 'data/output/bst.model'
 submission_path = 'data/output/submission.csv'
 
-FALSE_TRUE_SAMPLE_RATE = 16 / 1
+FALSE_TRUE_SAMPLE_RATE = 32 / 1
 
 threshold = 0.5
 missing_value = -999.0
 labels = ['0', '1']
-ignore_feats = [
-    # 'act_4',      # XX
+
+IGNORE_FEATS = [
+    'brand',
+]
+SEL_FEATS = [
+    # 'act2',
+    # 'user_act1_inteval0',
+    # 'user_brand36_inteval0',
+    # 'act_5',
+    # 'user_cat8',
+    # 'sku_a3',
+    # 'user_brand36_inteval1',
+    # 'user_act0_brand36_inteval5',
+    # 'act_1',
+    # 'act3',
+    # 'user_age_3',
+    # 'user_act5_brand55_inteval5',
+    # 'user_brand48_inteval0',
+    # 'user_reg_tm',
+    # 'user_act5_brand59_inteval5',
+    # 'user_cat8_inteval5',
+    # 'act_6',
+    # 'user_prop3_act1_inteval0',
+    # 'user_act0_inteval1',
     ]
 
-def strip_feats(df, ignore_feats):
+def select_feats(df):
     ignores = []
-    for prefix in ignore_feats:
+    for ignore in IGNORE_FEATS:
         for col in df.columns:
-            if col.startswith(prefix):
+            if ignore in col:
                 ignores.append(col)
+    # return list(set(ret))
     return list(set(df.columns) - set(['label'] + ignores))
 
 def strip_id(df):
@@ -97,7 +120,7 @@ def report(X, y, y_pred, print_score=False):
 
 def make_submission(d1, submission_path):
     combi = read_input_data(d1)
-    features = strip_feats(combi, ignore_feats)
+    features = select_feats(combi)
     X = combi[features]
     y = combi['label']
     data = xgb.DMatrix(strip_id(X), label=y, missing = missing_value)
@@ -125,7 +148,7 @@ def validate(d1_li, bst=None, print_cm=False):
     print('validate\tscore\tF11\tF12')
     for d1 in d1_li:
         combi = read_input_data(d1)
-        features = strip_feats(combi, ignore_feats)
+        features = select_feats(combi)
         X_valid = combi[features]
         y_valid = combi['label']
         d_valid = xgb.DMatrix(strip_id(X_valid), label=y_valid, missing = missing_value)
@@ -146,30 +169,30 @@ def validate(d1_li, bst=None, print_cm=False):
 
 def train(combi, print_cm=False):
     print('\ntrain:')
-    features = strip_feats(combi, ignore_feats)
+    features = select_feats(combi)
     X_combi = combi[features]
     y_combi = combi['label']
     X_train, X_test, y_train, y_test = train_test_split(X_combi, y_combi, test_size=0.5, random_state=0)
 
     params = {
-        'n_estimators':10,
-        'max_depth':8, 
-        'eta':0.05, 
+        'n_estimators':500,
+        'max_depth':8,
+        'eta':0.1, 
         'silent':1, 
         'objective':'binary:logistic', 
         'nthread':4, 
-        'eval_metric':['auc', 'logloss']
+        'eval_metric':['auc', 'logloss', 'error']
         }
 
     print('samples: %d/%d' % (len(y_train), len(y_test)))
-    print('ignore feats:', ' '.join(ignore_feats))
+    print('sel feats:', ' '.join(features))
     # print('using  feats:', ' '.join(features))
-    print('param: n_estimators:%d max_depth:%d' % (params['n_estimators'], params['max_depth']) )
+    print('param:', params)
 
     d_train = xgb.DMatrix(strip_id(X_train), label=y_train, missing = missing_value)
     d_test = xgb.DMatrix(strip_id(X_test), label=y_test, missing = missing_value)
     evallist = [(d_test, 'eval'), (d_train, 'train')]
-    num_round = 2
+    num_round = 5
     bst = xgb.train(params, d_train, num_round, evallist)
     bst.save_model(model_path)
     xgb.plot_importance(bst)
@@ -179,16 +202,16 @@ def train(combi, print_cm=False):
         print_cm(cm, labels)
     return bst
 
-combi = read_train_combi(['2016%04d' % i for i in [201,206,211,216,221,226]])
+combi = read_train_combi(['2016%04d' % i for i in range(201,212)])
 bst = train(combi)
-validate(['2016%04d' % i for i in [306,311,316]], bst)
+validate(['2016%04d' % i for i in [221,226]], bst)
 
 # bst = train(read_train_combi(['2016%04d' % i for i in [201]]))
 # make_submission('20160318', submission_path)
 
 import matplotlib.pyplot as plt 
-# from matplotlib.pylab import rcParams
-# rcParams['figure.figsize'] = 48, 16
+from matplotlib.pylab import rcParams
+rcParams['figure.figsize'] = 48, 16
 plt.style.use('ggplot') 
 xgb.plot_importance(bst) 
 xgb.plot_tree(bst, num_trees=1) 
